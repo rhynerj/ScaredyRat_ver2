@@ -487,10 +487,16 @@ def get_top_vels(datadict, nmax, binlabel, ntones):
         nmaxes.columns = ['Max Velocity']
     return(nmaxes)
     
-def get_anim(csv, n):
-    m = re.split('[-.]', csv)
-    anim = m[n]
-    return(anim)
+
+def get_anim(csv):
+    exp_rgx = re.compile(r'.*-([a-zA-Z]+-?\d+)\.[a-zA-Z]+$')
+    match = exp_rgx.match(csv)
+
+    if match:
+        anim = match.group(1)
+        return anim
+    else:
+        raise ValueError('File name does not contain valid animal ID.')
     
 def scaredy_find_csvs(csv_dir, prefix):
     csvlist = []
@@ -533,7 +539,7 @@ def concat_data(means, SEMs, meds, maxes, ntones):
 def concat_all_freezing(csvlist, tbin):
     freezing = pd.DataFrame()
     for csv in csvlist:
-        anim = get_anim(csv,-2)
+        anim = get_anim(csv)
         df = pd.read_csv(csv, index_col=0).T
         loc = (tbin * 3) + 2
         percentF = pd.DataFrame([df.iloc[loc]], index=[anim])
@@ -545,7 +551,7 @@ def concat_all_max(csvlist):
     maxes = pd.DataFrame()
 
     for csv in csvlist:
-        anim = get_anim(csv,-2)
+        anim = get_anim(csv)
         df = pd.read_csv(csv,index_col=0)
         if 'Avg Max' in df:
             meanMax = pd.DataFrame({anim: df['Avg Max']}).T
@@ -560,7 +566,7 @@ def concat_all_max(csvlist):
 def concat_all_darting(csvlist, loc):
     freezing = pd.DataFrame()
     for csv in csvlist:
-        anim = get_anim(csv,-2)
+        anim = get_anim(csv)
         df = pd.read_csv(csv, index_col=0).T
         # print(loc)
         # print(anim)
@@ -578,7 +584,7 @@ def compress_data(csvlist,tbin):
 
     allanims = pd.DataFrame()
     for csv in csvlist:
-        anim = get_anim(csv,-2)
+        anim = get_anim(csv)
         df = pd.read_csv(csv,index_col=0).transpose()
         # print(csv)
         # print(tbin)

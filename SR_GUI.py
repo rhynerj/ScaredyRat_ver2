@@ -3,10 +3,10 @@ import math
 import os, sys
 import PySimpleGUI as sg
 
-sys.path.append('./src')
+# sys.path.append('./src')
 
-import sr_functions as srf
-import sr_help as srh
+import src.sr_functions as srf
+import src.sr_help as srh
 
 #print = sg.Print # Set print to go to a window rather than the terminal
 # print = sg.Multiline.print

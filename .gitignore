@@ -12,3 +12,6 @@ build/ScaredyRat/EXE-00.toc
 __pycache__
 UPX
 .DS_STORE
+tests
+.idea
+*test*.py
