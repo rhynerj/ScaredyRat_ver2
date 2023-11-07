@@ -319,7 +319,7 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
                 epoch_medVel[i].to_csv(epoch_medVel_file)
 
                 #Epoch Velocity SEM
-                epoch_semVel.append(srf.get_SEMs(epc,epochLabel[i],nEpochEvents))#
+                epoch_semVel.append(srf.get_sems(epc, epochLabel[i], nEpochEvents))#
                 epoch_semVel_file = outpath + '/' + trialType + '-' + epochLabel[i].strip() + '-SEM-vels-{}.csv'
                 epoch_semVel_file = epoch_semVel_file.format(ID)
                 epoch_semVel[i].to_csv(epoch_semVel_file)
@@ -385,7 +385,7 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
                     dEpoch_medVel[i][m].to_csv(dEpoch_medVel_file)
 
                     #Derived-epoch Velocity SEM
-                    dEpoch_semVel[i].append(srf.get_SEMs(dEpoch_df,derivedEpoch_list[m],nEpochEvents))#
+                    dEpoch_semVel[i].append(srf.get_sems(dEpoch_df, derivedEpoch_list[m], nEpochEvents))#
                     dEpoch_semVel_file = outpath + '/' + trialType + '-' + epochLabel[i].strip()+ '_' + derivedEpoch_list[m] + '-SEM-vels-{}.csv'
                     dEpoch_semVel_file = dEpoch_semVel_file.format(ID)
                     dEpoch_semVel[i][m].to_csv(dEpoch_semVel_file)
@@ -488,7 +488,7 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
 
     for k in range(0,len(trialType_list)):  # Should produce darting and freezing files for each trial type x epoch x sub-epoch
 
-        srf.compile_BaselineSR(trialType_list[k],outpath, outpath2)
+        srf.compile_baseline_sr(trialType_list[k], outpath, outpath2)
 
         for epoch_iter in raw_epochSettings[detectionSettingsLabel[k]]:
             epoch_ct = int(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['EpochCount'])
@@ -845,7 +845,7 @@ if __name__ == '__main__':
 
             for k in range(0,len(trialType_list)):  # Should produce darting and freezing files for each trial type x epoch x sub-epoch
 
-                srf.compile_BaselineSR(trialType_list[k],outpath, outpath2)
+                srf.compile_baseline_sr(trialType_list[k], outpath, outpath2)
 
                 for epoch_iter in raw_epochSettings[detectionSettingsLabel[k]]:
                     epoch_ct = int(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['EpochCount'])
