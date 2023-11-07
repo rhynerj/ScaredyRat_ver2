@@ -559,7 +559,7 @@ def plot_outputs(anim, id, trial_type_full, outpath, trial_type, ntones, fts, dt
     # define where to save the fig
     # fname = outpath + '/' + trial_type + '-' + epoch_label + '-plot-{}'
     # fname = fname.format(id)
-    fname = os.path.join(outpath, f'{trial_type}-{epoch_label}-plot-id')
+    fname = os.path.join(outpath, f'{trial_type}-{epoch_label}-plot-{id}')
 
     plt.savefig(fname, dpi=300)
     plt.savefig(fname + '.eps', format='eps', dpi=300)
@@ -663,7 +663,8 @@ def get_top_vels(datadict, nmax, binlabel, ntones):
             topvels = pd.DataFrame([vlist[-1]])
         else:
             topvels = pd.DataFrame([vlist[-nmax:-1]])
-        nmaxes = nmaxes.append(topvels)
+        # nmaxes = nmaxes.append(topvels)
+        nmaxes = pd.concat([nmaxes, topvels])
         col_list.append(binlabel + str(i + 1) + ' Max Velocity')
         # i += 1
     if nmax > 1:
@@ -898,7 +899,7 @@ def all_velocity_out(prefix, inpath, outpath, num_epoch, epoch_level=False):
 
 def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, num_epoch):
     """
-    Combine and output velocity, freezing, and darting data for each sub-epoch in the given list.
+    Combine and output velocity, freezing, and darting data for each sub(derived)-epoch in the given list.
     """
     # check whether the sub-epoch input list is valid
     if not d_epoch_list or not d_epoch_list[0]:
@@ -911,10 +912,10 @@ def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, num_epoch):
         all_velocity_out(d_epoch_prefix, inpath, outpath, num_epoch, True)
 
         # darting summary data
-        all_darting_out(prefix, inpath, outpath)
+        all_darting_out(d_epoch_prefix, inpath, outpath)
 
         # freezing summary data
-        all_freezing_out(prefix, inpath, outpath)
+        all_freezing_out(d_epoch_prefix, inpath, outpath)
 
 
 def compile_SR(trial_type, epoch_label, num_epoch, num_d_epoch, d_epoch_list, behavior, inpath, outpath):
@@ -977,7 +978,7 @@ def compile_SR(trial_type, epoch_label, num_epoch, num_d_epoch, d_epoch_list, be
     # allMax.to_csv(outfile)
 
     # summaries for each sub_epoch
-    all_subepoch_out()
+    all_subepoch_out(d_epoch_list, epoch_prefix, inpath, outpath, num_epoch)
     # num_d_epoch = len(d_epoch_list)
     # # print(dEpoch_list)
     # if num_d_epoch == 0 or d_epoch_list == ['']:

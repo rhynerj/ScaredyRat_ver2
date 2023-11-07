@@ -325,10 +325,16 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
                 epoch_semVel[i].to_csv(epoch_semVel_file)
                 # print(type(epoch_semVel[i]))
 
+                # TODO: integrate new code below better
+                # new:
+                # get freezing and darting data using new function
+                epochFreezing_TMP, epochFTs_TMP, epochDarting_TMP, epochDTs_TMP = srf.get_freezing_darting(epc,nEpochEvents,freezeThresh, dartThresh, epochLabel[i].strip(), binSize)
+                # end new
+
                 #Epoch freezing
                 epoch_freezing_file = outpath + '/' + trialType + '-' + epochLabel[i].strip() + '-freezing-{}.csv'
                 epoch_freezing_file = epoch_freezing_file.format(ID)
-                epochFreezing_TMP, epochFTs_TMP = srf.get_freezing(epc,nEpochEvents,freezeThresh, epochLabel[i].strip(), binSize)
+                # epochFreezing_TMP, epochFTs_TMP = srf.get_freezing(epc,nEpochEvents,freezeThresh, epochLabel[i].strip(), binSize)
                 epochFreezing.append(epochFreezing_TMP)
                 epochFTs.append(epochFTs_TMP)
                 epochFreezing_TMP.to_csv(epoch_freezing_file)
@@ -336,7 +342,7 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
                 #Epoch Darting
                 epoch_darting_file = outpath + '/' + trialType + '-' + epochLabel[i].strip() + '-darting-{}.csv'
                 epoch_darting_file = epoch_darting_file.format(ID)
-                epochDarting_TMP, epochDTs_TMP = srf.get_darting(epc,nEpochEvents,dartThresh, epochLabel[i].strip(), binSize)
+                # epochDarting_TMP, epochDTs_TMP = srf.get_darting(epc,nEpochEvents,dartThresh, epochLabel[i].strip(), binSize)
                 epochDarting.append(epochDarting_TMP)
                 epochDTs.append(epochDTs_TMP)
                 epochDarting_TMP.to_csv(epoch_darting_file)
@@ -390,10 +396,17 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
                     dEpoch_semVel_file = dEpoch_semVel_file.format(ID)
                     dEpoch_semVel[i][m].to_csv(dEpoch_semVel_file)
 
+                    # TODO: integrate new code below better
+                    # new:
+                    # get freezing and darting data using new function
+                    dEpochFreezing_TMP, dEpochFTs_TMP, dEpochDarting_TMP, dEpochDTs_TMP = srf.get_freezing_darting(dEpoch_df,nEpochEvents,freezeThresh, dartThresh, epochLabel[i].strip() + '-' + derivedEpoch_list[m], binSize)
+                    # end new
+
+
                     #Derived-epoch freezing
                     dEpoch_freezing_file = outpath + '/' + trialType + '-' + epochLabel[i].strip() + '_' + derivedEpoch_list[m] + '-freezing-{}.csv'
                     dEpoch_freezing_file = dEpoch_freezing_file.format(ID)
-                    dEpochFreezing_TMP, dEpochFTs_TMP = srf.get_freezing(dEpoch_df,nEpochEvents,freezeThresh, epochLabel[i].strip() + '-' + derivedEpoch_list[m], binSize)
+                    # dEpochFreezing_TMP, dEpochFTs_TMP = srf.get_freezing(dEpoch_df,nEpochEvents,freezeThresh, epochLabel[i].strip() + '-' + derivedEpoch_list[m], binSize)
                     dEpochFreezing[i].append(dEpochFreezing_TMP)
                     dEpochFTs[i].append(dEpochFTs_TMP)
                     dEpochFreezing_TMP.to_csv(dEpoch_freezing_file)
@@ -401,7 +414,7 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
                     #Derived-epoch Darting
                     dEpoch_darting_file = outpath + '/' + trialType + '-' + epochLabel[i].strip() + '_' + derivedEpoch_list[m] + '-darting-{}.csv'
                     dEpoch_darting_file = dEpoch_darting_file.format(ID)
-                    dEpochDarting_TMP, dEpochDTs_TMP = srf.get_darting(dEpoch_df,nEpochEvents,dartThresh, epochLabel[i].strip() + '-' + derivedEpoch_list[m], binSize)
+                    # dEpochDarting_TMP, dEpochDTs_TMP = srf.get_darting(dEpoch_df,nEpochEvents,dartThresh, epochLabel[i].strip() + '-' + derivedEpoch_list[m], binSize)
                     dEpochDarting[i].append(dEpochDarting_TMP)
                     dEpochDTs[i].append(dEpochDTs_TMP)
                     dEpochDarting_TMP.to_csv(dEpoch_darting_file)
