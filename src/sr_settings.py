@@ -112,7 +112,7 @@ class SheetSettings:
         Get the TrialType object that matches the given label, if it exists
         """
         try:
-            # provide default with next instead? (see next() documentation)
+            # provide default with next instead? (see next() documentation) (eg. next((arg for arg in sys.argv if not os.path.exists(arg)), None))
             return next(trial_types for trial_types in self.trial_type_list if trial_types.detection_settings_label == detection_label)
         except StopIteration:
             print(f'No trial type matches given detection label {detection_label}')
