@@ -12,7 +12,7 @@ import PySimpleGUI as sg
 
 # print = sg.Print # Set print to go to a window rather than the terminal
 
-
+# individual (run_SR)
 def animal_read(inpath, filename, sheet):
     """
     Return animal ID, trial context, and dataframe of trial data with long header removed.
@@ -41,6 +41,7 @@ def animal_read(inpath, filename, sheet):
     return animal, context, df
 
 
+# find_delim_segment, find_tone_vels, get_recording_time_df
 def get_label_df(df, i, label):
     """
     For the current epoch_label at the current number (ex: 'Tone' and 1),
@@ -64,6 +65,7 @@ def get_label_df(df, i, label):
     return tone
 
 
+# get_vels, plot_outputs
 def find_tone_vels(df, i, epoch_label):
     """
     For the current epoch_label at the current number (ex: 'Tone' and 1),
@@ -73,6 +75,7 @@ def find_tone_vels(df, i, epoch_label):
     return get_label_df(df, i, epoch_label)['Velocity']
 
 
+# plot_outputs
 def find_delim_vels(df, i, epoch, delim_times):
     """
     Return the 'Velocity' column from the given df for the designated time range,
@@ -91,6 +94,7 @@ def find_delim_vels(df, i, epoch, delim_times):
     return tf_df
 
 
+# find_delim_based_time, find_delim_vels
 def get_recording_time_df(df, i, label, start_idx, start_offset, stop_offset):
     """
     For the given df, return a df where the column designated by the given i and label are 1
@@ -114,6 +118,7 @@ def get_recording_time_df(df, i, label, start_idx, start_offset, stop_offset):
     return df.iloc[s_idx:e_idx]
 
 
+# individual
 def find_delim_segment(df, ndelim, delim):
     """
     Create dictionary for each delimited segment. Values are
@@ -135,6 +140,7 @@ def find_delim_segment(df, ndelim, delim):
     return datarray
 
 
+# no usages
 def find_timeperiod(df, nperiods, starttime, endtime):
     """
     CANDIDATE FOR DELETION: no found usages
@@ -156,19 +162,21 @@ def find_timeperiod(df, nperiods, starttime, endtime):
     return datarray
 
 
+# individual
 def find_delim_based_time(df, ndelim, delim, startidx, startoffset, stopoffset):
     """
     Create a dictionary with all pretones. Keys are indices, values
     are dataframes for 30s before tone == 1 (i.e., a df for each pretone inverval).
     """
-    datarray = {}
+    delim_dict = {}
     for i in range(ndelim):
         # get pretone recording time df and add to dict
-        datarray[i] = get_recording_time_df(df, i, delim, startidx, startoffset, stopoffset)
+        delim_dict[i] = get_recording_time_df(df, i, delim, startidx, startoffset, stopoffset)
 
-    return datarray
+    return delim_dict
 
 
+# get_counts_and_times, get_freezing_counts_times
 def get_vels_in_sec(vels, n, bin_secs, fill_method):
     """
     Return list of velocities in current time bin (where n is the approximate start time
@@ -181,6 +189,7 @@ def get_vels_in_sec(vels, n, bin_secs, fill_method):
     return vels_in_sec
 
 
+# get_baseline_freezing, get_freezing_darting
 def get_counts_and_times(vels, freezing_threshold, darting_threshold, bin_secs, fill_method, time_range):
     """
     For the given time_range, find the times below freezing threshold and the times above darting threshold,
@@ -214,6 +223,7 @@ def get_counts_and_times(vels, freezing_threshold, darting_threshold, bin_secs, 
     return freezing_counts, freezing_times, darting_counts, darting_times
 
 
+# no usages
 def get_freezing_counts_times(vels, freezing_theshold, bin_secs, fill_method, time_range):
     """
     SLATED FOR REPLACEMENT BY get_counts_and_times
@@ -238,6 +248,7 @@ def get_freezing_counts_times(vels, freezing_theshold, bin_secs, fill_method, ti
     return freezing_counts, freezing_times
 
 
+# individual
 def get_baseline_freezing(datadict, freezing_threshold, bin_secs):
     """
     Return a dataframe with the number of seconds spent freezing, the number of non-freezing seconds,
@@ -262,6 +273,7 @@ def get_baseline_freezing(datadict, freezing_threshold, bin_secs):
     return freezing, freezing_times
 
 
+# no usages (testing only)
 def get_baseline_freezing2(datadict, freezing_threshold, bin_secs):
     # freezing = pd.DataFrame()
     freezing_secs = 0
@@ -293,6 +305,7 @@ def get_baseline_freezing2(datadict, freezing_threshold, bin_secs):
     return freezing, freezing_times
 
 
+# no usages
 def get_freezing(datadict, ntones, freezing_threshold, scope_name, bin_secs):
     """
     TEMP: placeholder until all usages updated
@@ -333,6 +346,7 @@ def get_freezing(datadict, ntones, freezing_threshold, scope_name, bin_secs):
     # return all_freezing, all_freezing_times
 
 
+# no usages
 def get_freezing2(datadict, ntones, freezingThreshold, scopeName, binSecs):
     freezing = pd.DataFrame()
     freezingSecs = 0
@@ -376,6 +390,7 @@ def get_freezing2(datadict, ntones, freezingThreshold, scopeName, binSecs):
     return (freezing, freezingTimes)
 
 
+# no usages
 def get_darting(datadict, ntones, dart_threshold, scope_name, bin_secs):
     """
     TEMP: placeholder until all usages updated
@@ -384,6 +399,7 @@ def get_darting(datadict, ntones, dart_threshold, scope_name, bin_secs):
     print('get darting', datadict, ntones, dart_threshold, scope_name, bin_secs)
 
 
+# no usages
 def get_darting2(datadict, ntones, dartThreshold, scopeName, binSecs):
     darting = pd.DataFrame()
     dartingTimes = []
@@ -419,14 +435,15 @@ def get_darting2(datadict, ntones, dartThreshold, scopeName, binSecs):
     return (darting, dartingTimes)
 
 
+# individual
 def get_freezing_darting(datadict, ntones, freezing_threshold, darting_threshold, scope_name, bin_secs):
     """
     Return data frames summarizing freezing and darting information, and lists of freezing and darting times.
     """
     # init dfs and lists
     all_freezing = pd.DataFrame(columns=['Freezing  (Time Bins)', 'Nonfreezing  (Time Bins)', 'Percent Freezing'])
-    all_freezing_times = []
     all_darting = pd.DataFrame(columns=['Darts (count)'])
+    all_freezing_times = []
     all_darting_times = []
 
     # iterate over tones
@@ -459,6 +476,7 @@ def get_freezing_darting(datadict, ntones, freezing_threshold, darting_threshold
     return all_freezing, all_freezing_times, all_darting, all_darting_times
 
 
+# individual
 def plot_outputs(anim, id, trial_type_full, outpath, trial_type, ntones, fts, dts, epoch_label, print_settings, print_labels):
     colormap = [[245 / 256, 121 / 256, 58 / 256],
                 [169 / 256, 90 / 256, 161 / 256],
@@ -569,6 +587,7 @@ def plot_outputs(anim, id, trial_type_full, outpath, trial_type, ntones, fts, dt
     # return ()
 
 
+# individual
 def get_means(datadict, timebin, ntones):
     """
     Returns a dataframe of mean velocity of timebin at each tone.
@@ -586,6 +605,7 @@ def get_means(datadict, timebin, ntones):
     return means
 
 
+# individual
 def get_meds(datadict, timebin, ntones):
     """
     Returns a dataframe of median velocity of timebin at each tone.
@@ -603,6 +623,7 @@ def get_meds(datadict, timebin, ntones):
     return meds
 
 
+# individual
 def get_sems(datadict, timebin, ntones):
     """
     Returns a dataframe of median velocity of timebin at each tone.
@@ -620,6 +641,7 @@ def get_sems(datadict, timebin, ntones):
     return sems
 
 
+# no usages
 def get_vels(df, ntones):
     """
     Creates data of all velocities from original dataframe for plotting.
@@ -643,7 +665,41 @@ def get_vels(df, ntones):
     return tonevels
 
 
+# individual
 def get_top_vels(datadict, nmax, binlabel, ntones):
+    """
+    Returns dataframe of nmax (int) maximum velocities for a timebin.
+    The second section adds a column for an average of the maxima.
+    """
+    nmax_list = []
+    idx = []
+    for i in range(ntones):
+        epoch = datadict[i]
+        vels = epoch['Velocity']
+        vlist = vels.to_list()
+        if not vlist:
+            continue
+        elif nmax == 1:
+            topvels = [max(vlist)]
+        else:
+            topvels = sorted(vlist)[-nmax:]
+        nmax_list.append(topvels)
+        idx.append(f'{binlabel} {i + 1} Max Velocity')
+
+    nmaxes = pd.DataFrame(nmax_list)
+    if nmax > 1:
+        nmaxes.index = np.arange(1, nmaxes.shape[0] + 1)
+        nmaxes.columns = np.arange(1, nmaxes.shape[1] + 1)
+
+        nmaxes['Avg Max'] = nmaxes.mean(axis=1)
+    else:
+        nmaxes.index = idx
+        nmaxes.columns = ['Max Velocity']
+
+    return nmaxes
+
+
+def get_top_vels2(datadict, nmax, binlabel, ntones):
     """
     Returns dataframe of nmax (int) maximum velocities for a timebin.
     The second section adds a column for an average of the maxima.
@@ -679,6 +735,7 @@ def get_top_vels(datadict, nmax, binlabel, ntones):
     return nmaxes
 
 
+# compress_data, concat_all_max
 def get_anim(csv):
     exp_rgx = re.compile(r'.*-([a-zA-Z]+-?\d+)\.[a-zA-Z]+$')
     match = exp_rgx.match(csv)
@@ -690,6 +747,7 @@ def get_anim(csv):
         raise ValueError('File name does not contain valid animal ID.')
 
 
+# compiled stuff: all_darting_out, all_freezing_out, all_velocity_out, compile_baseline_sr
 def scaredy_find_csvs(csv_dir, prefix):
     """
     Return list of csvs in given dir with given prefix
@@ -707,7 +765,8 @@ def scaredy_find_csvs(csv_dir, prefix):
     return csvlist
 
 
-def concat_data(means, sems, meds, maxes, ntones):
+# all_velocity_out
+def concat_vel_data(means, sems, meds, maxes, ntones):
     """
     Return a dataframe that contains the given means, SEMs, meds, and maxes
     """
@@ -749,6 +808,7 @@ def concat_data(means, sems, meds, maxes, ntones):
     return all_data
 
 
+# compiled stuff: all_velocity_out, concat_all_darting, concat_all_freezing
 def compress_data(csvlist, row):
     """
     Get the given time bin from each of the CSVs in the given list, and combine the data into a single df with the
@@ -770,6 +830,7 @@ def compress_data(csvlist, row):
     return all_anims
 
 
+# all_freezing_out
 def concat_all_freezing(csvlist, tbin):
     """
     Return the combined freezing data for the given time bin for all animals in the CSV list
@@ -788,6 +849,7 @@ def concat_all_freezing(csvlist, tbin):
     return freezing
 
 
+# all_darting_out
 def concat_all_darting(csvlist, loc):
     """
     Return the combined darting data for the given time bin for all animals in the CSV list
@@ -811,6 +873,7 @@ def concat_all_darting(csvlist, loc):
     return darting
 
 
+# all_velocity_out
 def concat_all_max(csvlist):
     """
     Combine all the average max or max velocity values from the list of CSVs
@@ -830,6 +893,7 @@ def concat_all_max(csvlist):
     return maxes
 
 
+# individual? in run_SR but is compiled data?
 def compile_baseline_sr(trial_type, inpath, outpath):
     """
     Combine the data from the csvs for the baseline measurements for each animal into a single csv file.
@@ -841,16 +905,35 @@ def compile_baseline_sr(trial_type, inpath, outpath):
     baseline_data.to_csv(outfile)
 
 
+# individual (still needs to be added)
 # add additional outputted csvs here?
 # TO DO: update/test this where the actual output is created (move to other file?)
 # rough outline of function to write additional freezing/darting csvs
-def freezing_darting_times():
+# take in df with animal data, animal id?, freezing threshold, darting threshold, epoch label, bin size (secs), output path
+def freezing_darting_times(anim, id, freezing_threshold, darting_threshold, trial_type, epoch_label, bin_secs, outpath):
     """
-    TODO: cp plotting, modify to output dfs: 1 w/ time stamps and freezing, 1 w/ time stamps and darting
+    TODO: cols: start and stop, numbered index; one for freezing, one for darting
+    note: have to call freezing/darting separately because looking at ALL behavior, not just tone response behavior
+    number of tones in set to 1, and animal data frame is supplied as a data dict with a single item (potentially change
+    get_freezing_darting behavior to improve this)
     """
-    print('')
+    # get freezing and darting time data
+    freezing_darting = get_freezing_darting({0: anim}, 1, freezing_threshold, darting_threshold, epoch_label, bin_secs)
+
+    # extract freezing and darting times
+    freezing_times = freezing_darting[1]
+    darting_times = freezing_darting[3]
+
+    # create data frames with the start and stop times
+    freezing_time_df, darting_time_df = (pd.DataFrame(times, columns=['start', 'stop'])
+                                         for times in (freezing_times, darting_times))
+
+    # write data to csv file output using outpath
+    freezing_time_df.to_csv(outpath, f'{trial_type}-{epoch_label}-freezing-times-{id}')
+    darting_time_df.to_csv(outpath, f'{trial_type}-{epoch_label}-darting-times-{id}')
 
 
+# compiled
 def all_darting_out(prefix, inpath, outpath):
     """
     Combine the data from all darting csvs and write to file
@@ -861,6 +944,7 @@ def all_darting_out(prefix, inpath, outpath):
     darting_data.to_csv(darting_outfile)
 
 
+# compiled
 def all_freezing_out(prefix, inpath, outpath):
     """
     Combine the data from all freezing csvs and write to file
@@ -871,6 +955,7 @@ def all_freezing_out(prefix, inpath, outpath):
     freezing_data.to_csv(freezing_outfile)
 
 
+# compiled
 def all_velocity_out(prefix, inpath, outpath, num_epoch, epoch_level=False):
     """
     Combine data from all csvs related to general velocity measurements and write to output file.
@@ -885,7 +970,7 @@ def all_velocity_out(prefix, inpath, outpath, num_epoch, epoch_level=False):
     means, meds, maxes, sems = [compress_data(csvs, 0) for csvs in [mean_csvs, med_csvs, max_csvs, sem_csvs]]
 
     # merge data frames into one with all data
-    all_data = concat_data(means, sems, meds, maxes, num_epoch)
+    all_data = concat_vel_data(means, sems, meds, maxes, num_epoch)
 
     outfile = os.path.join(outpath, f'All-{prefix}-VelocitySummary.csv')
     all_data.to_csv(outfile)
@@ -897,6 +982,7 @@ def all_velocity_out(prefix, inpath, outpath, num_epoch, epoch_level=False):
         e_maxes_single.to_csv(outfile)
 
 
+# compiled
 def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, num_epoch):
     """
     Combine and output velocity, freezing, and darting data for each sub(derived)-epoch in the given list.
@@ -918,9 +1004,10 @@ def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, num_epoch):
         all_freezing_out(d_epoch_prefix, inpath, outpath)
 
 
+# is the compiled fn
 def compile_SR(trial_type, epoch_label, num_epoch, num_d_epoch, d_epoch_list, behavior, inpath, outpath):
     """
-    TODO -> rename function more descriptive name (i.e. is writing summary csvs); also, split up into multiple functions
+    TODO -> rename function more descriptive name (i.e. is writing summary csvs), move to sr_commpiled
     """
 
     epoch_prefix = f'{trial_type}-{epoch_label}'
