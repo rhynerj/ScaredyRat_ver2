@@ -23,7 +23,7 @@ def get_file_list(inpath):
 
 
 def get_trial_info(ctx, sheet_settings, epoch_settings):
-    # TODO function: get_trial_info
+    # function: get_trial_info
     # this can probably be replaced by a simple if statement:
     # if ctx in detectionSettingsLabel: get the associated values
     # else: print the unknown messages (see below) return false
@@ -36,7 +36,7 @@ def get_trial_info(ctx, sheet_settings, epoch_settings):
         # set the epoch label to be the key of the nested dict that is referred to by the current detection settings label
         # i.e., with the defaults, this returns ['Tone'] (have struct {'Fear Conditioning': {'Tone': {stuff}}})
         # has to be an easier way to do this
-        epochs = epoch_settings.get_epoch_by_label(ctx)
+        epochs = epoch_settings[ctx]
         # the context is eg something like "Fear Conditioning"
         trial_type_key = ctx
         # these two are from the raw_sheet_settings variable
@@ -57,11 +57,12 @@ def get_trial_info(ctx, sheet_settings, epoch_settings):
 ####
 
 # TODO function: baseline_data_out
-def baseline_data_out(anim_id, anim, outpath, bin_secs, baseline_duration, freeze_thresh, trial_type_abbr):
+def baseline_data_out(anim_id, anim, outpath, bin_secs, baseline_duration, freeze_thresh, trial_type_abbr, label=None):
     # get baseline data
     # filter the dataframe to include only recording times less than or equal to the baseline duration
     # baselineDuration is from raw_trialSettings -> default: 120
-    label = 'Recording time'
+    if label is None:
+        label = 'Recording time'
     baseline = anim[anim[label] <= baseline_duration]
     # call baseline function for df and times
     baseline_freezing, bfts = srf.get_baseline_freezing(baseline, freezing_threshold=freeze_thresh,
@@ -72,21 +73,204 @@ def baseline_data_out(anim_id, anim, outpath, bin_secs, baseline_duration, freez
     ####
 
 
-# does the decorator actually help?
-def write_analysis_to_csv(outfile):
-    """
-    Decorator to run analysis, write result to given csv file, and return result
-    """
-    def write_decorator(func):
-        @functools.wraps(func)
-        def write_wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-            result.to_csv(outfile)
-            return result
-        return write_wrapper
-    return write_decorator
+# # does the decorator actually help? -> delete?
+# def write_analysis_to_csv(outfile):
+#     """
+#     Decorator to run analysis, write result to given csv file, and return result
+#     """
+#     def write_decorator(func):
+#         @functools.wraps(func)
+#         def write_wrapper(*args, **kwargs):
+#             result = func(*args, **kwargs)
+#             result.to_csv(outfile)
+#             return result
+#         return write_wrapper
+#     return write_decorator
 
 # TODO: add analysis fns here
+# for each epoch (check if full velocity or not to decide which analyses to run),
+# write current to csv and add results to something that stores the overall results
+# do the same for derived epochs
+# how to avoid repetitive code? decorator issue: needing the outpath arg
+# outpath: same except for end, except for that one specific maxvels file that is response
+# can add directly to data frame rather than making list and then converting to dataframe
+# (i.e. will only have one loop for epoch and one in it for derived and write combined df to csv at end)
+
+
+def standard_analysis(delim_df_dict, label, ntones, freezing_threshold, darting_threshold, bin_secs):
+    """
+    Run standard analysis functions (max vels, freezing, darting).
+    Return results.
+    """
+    # might need to change this (see note1 in output_analysis_files())
+    # max_vels
+    max_vels = srf.get_top_vels(delim_df_dict, 1, label, ntones)
+    # freezing and darting -> make sure that epoch does not contain a space
+    freezing_df, freezing_times, darting_df, darting_times = srf.get_freezing_darting(delim_df_dict,
+                                                                                      ntones,
+                                                                                      freezing_threshold,
+                                                                                      darting_threshold,
+                                                                                      label,
+                                                                                      bin_secs)
+
+    return [freezing_times, darting_times, max_vels, freezing_df, darting_df]
+
+
+def convert_times_lists_to_dfs(standard_analysis_results):
+    """Convert the freezing and darting times lists for df for given standard results list."""
+    standard_analysis_results[0:2] = (pd.DataFrame(times, columns=['start', 'stop'])
+                                      for times in standard_analysis_results[0:2])
+    return standard_analysis_results
+
+
+def extended_analysis():
+    """Run extended analysis functions (mean, median, and sem vels)."""
+    print('hi')
+
+
+def add_analyses_outputs(anim, base_outpath, suffixes, comb_dfs, analysis_dfs):
+    """
+    Write given analysis df to outpath and add it to the given list of list of dataframes
+    that stores the combined data for all epochs/sub-epochs (later to be merged into single df)
+    for each analysis provided.
+    """
+
+    # analysis_df.to_csv(outpath)
+    # updated_df = pd.concat([all_df, analysis_df], axis=1)
+
+    # return updated_df
+
+    # loop over all included analyses, outputting csvs and adding to appropriate list of df
+    for suffix, comb_df, analysis_df in zip(suffixes, comb_dfs, analysis_dfs):
+        outpath = f'{base_outpath}-{suffix}-{anim}.csv'
+        analysis_df.to_csv(outpath)
+        comb_df.append(analysis_df)
+
+    return comb_dfs
+
+
+def run_analysis(anim, outpath, epoch, ntones,
+                 freezing_threshold, darting_threshold, bin_secs,
+                 comb_dfs_list, suffixes, full_analysis,
+                 sub_epoch_timings, sub_epoch_labels=None, sub_epoch=None,
+                 anim_id=None, trial_type_full=None, trial_type_abbr=None,
+                 epoch_level=True):
+    # get the dict of dfs for each tone in the epoch
+    if epoch_level:
+        delim_df_dict = srf.find_delim_segment(anim, ntones, epoch)
+    else:
+        delim_df_dict = srf.find_delim_based_time(anim, ntones, epoch, *sub_epoch_timings)
+
+    label = epoch if epoch_level else f'{epoch}-{sub_epoch}'
+    # run standard analysis
+    analysis_results = standard_analysis(delim_df_dict, label, ntones, freezing_threshold, darting_threshold, bin_secs)
+    # check whether full velocity output desired and add if yes
+    if full_analysis:
+        analysis_results += extended_analysis()
+
+    if epoch_level:
+        # output plots (using freezing and darting times, which are first two items in list)
+        srf.plot_outputs(anim, anim_id, trial_type_full, outpath, trial_type_abbr,
+                         ntones, analysis_results[0], analysis_results[1], epoch, sub_epoch_timings, sub_epoch_labels)
+
+    # convert freezing/darting times to dfs (mutates original list)
+    analysis_results = convert_times_lists_to_dfs(analysis_results)
+
+    comb_dfs_list = add_analyses_outputs(anim, outpath, suffixes, comb_dfs_list,
+                                         analysis_results)  # this will repeat for each sub epoch, except that the suffixes will be different (will include the sub_epoch, and will be shock_response for shock max vel)
+
+    # return the updated combined data frames
+    return comb_dfs_list
+
+
+def analysis_files_for_epoch(anim, anim_id, outpath, trial_type_full, trial_type_abbr, epoch,
+                             freezing_threshold, darting_threshold, bin_secs,
+                             comb_dfs_list, full_analysis):
+    # CONSTRUCTION NOTICE: moving sections of this to run_analysis -> rewrite accordingly
+    # get the dict of dfs for each tone in the epoch
+    # epc = srf.find_delim_segment(anim, ntones, epoch)
+    # run standard analysis
+    # analysis_results = standard_analysis(epc, epoch, ntones, freezing_threshold, darting_threshold, bin_secs)
+    # list of suffixes -> note that the one the max-vel in the sub-epoch (specifically) must be "shock-response" -> move one function up? (to all_epochs_analysis)?
+    suffixes = ['freezing-times', 'darting-times', 'max-vels', 'freezing', 'darting']
+    # check whether full velocity output desired and add if yes
+    # if full_analysis:
+    #    analysis_results += extended_analysis()
+
+    # output plots (using freezing and darting times, which are first two items in list)
+    # srf.plot_outputs(anim, anim_id, trial_type_full, outpath, trial_type_abbr,
+    #                  ntones, analysis_results[0], analysis_results[1], epoch, sub_epoch_timings, sub_epoch_labels)
+
+    # convert freezing/darting times to dfs (mutates original list)
+    # convert_times_lists_to_dfs(analysis_results)
+
+    # comb_dfs_list = add_analyses_outputs(outpath, suffixes, comb_dfs_list, analysis_results)  # this will repeat for each sub epoch, except that the suffixes will be different (will include the sub_epoch, and will be shock_response for shock max vel)
+
+    # complete list of sub epoch labels and times for epoch (needed only for plot)
+    sub_epoch_labels, sub_epoch_timings = epoch.get_sub_epoch_lists()
+
+    # run analysis, update combined dfs, and output files
+    comb_dfs_list = run_analysis(anim, outpath, epoch.label, epoch.epoch_count,
+                                 freezing_threshold, darting_threshold, bin_secs,
+                                 comb_dfs_list, suffixes, full_analysis,
+                                 sub_epoch_timings, sub_epoch_labels=sub_epoch_labels,
+                                 anim_id=anim_id, trial_type_full=trial_type_full, trial_type_abbr=trial_type_abbr,
+                                 epoch_level=True)
+    # loop over sub-epochs
+    for sub_epoch, sub_epoch_timing in epoch.get_sub_epochs_with_int_timings():
+        # skip empties
+        if sub_epoch == '':
+            continue
+
+        # add sub epoch name to suffixes
+        sub_epoch_suffixes = [f'{sub_epoch}-{suffix}' for suffix in suffixes]
+        # for the shock sub epoch, name suffix should be 'shock response'; replace
+        if sub_epoch == 'Shock':
+            sub_epoch_suffixes[2] = 'Shock-response'
+
+        # run analysis, update combined dfs, and output files
+        comb_dfs_list = run_analysis(anim, outpath, epoch.label, epoch.epoch_count,
+                                     freezing_threshold, darting_threshold, bin_secs,
+                                     comb_dfs_list, suffixes, full_analysis,
+                                     sub_epoch_timing, sub_epoch=sub_epoch,
+                                     epoch_level=False)
+
+    # return updated combined dfs
+    return comb_dfs_list
+
+    # TODO: START HERE: 1. finish all_epoch, 2. check function logic and test functions
+
+    # zip together list of names (for outpath), all_dfs, and analysis outputs (from helper fn) and call add_analysis_output() -> note1: move this somewhere else? need to make sure adding to overall df, but want to avoid duplication w/ sub-epochs
+
+    # freezing and darting time data frames
+    # freezing_time_df, darting_time_df = (pd.DataFrame(times, columns=['start', 'stop'])
+    #                                     for times in (freezing_times, darting_times))
+
+    # loop over sub-epochs
+    # base-outpath for current epoch
+
+
+def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr, epochs,
+                       freeze_thresh, dart_thresh, bin_secs, comb_dfs_list, full_analysis=False):
+    # check whether multiple epochs -> need to do this to see whether to include epoch name
+    if len(epochs) > 1:
+        for epoch in epochs:
+            # add epoch name to base-outpath for epoch -> need to strip epoch? check whether already stripped (should be)
+            base_outpath = f'{outpath}-{epoch}'
+            print(base_outpath)
+            # run the analysis (above) -> might not need to reassign to list (since og is mutatated) but keep for clarity?
+            # comb_dfs_list = analysis_files_for_epoch(anim, anim_id, base_outpath, trial_type_full, trial_type_abbr,
+            #                                          epoch,
+            #                                          freeze_thresh, dart_thresh, bin_secs, comb_dfs_list, full_analysis)
+    else:
+        print(outpath)
+        # run analysis for single epoch (exclude epoch name from file names)
+        # comb_dfs_list = analysis_files_for_epoch(anim, anim_id, outpath, trial_type_full, trial_type_abbr, epochs[0],
+        #                                          freeze_thresh, dart_thresh, bin_secs, comb_dfs_list, full_analysis)
+
+    # combined dfs
+    # ex of concat: pd.concat([all_df, analysis_df], axis=1);
+    # for each item in comb_dfs_list, do something list pd.concat(comb_df, axis=1) -> comb_df should be list of dfs
 
 
 def run_SR(in_out_settings=InOutSettings(), sheet_settings=SheetSettings(), trial_settings=TrialSettings(),
@@ -100,7 +284,7 @@ def run_SR(in_out_settings=InOutSettings(), sheet_settings=SheetSettings(), tria
     inpath = in_out_settings.inpath
     outpath = in_out_settings.ind_outpath
 
-    # TODO function: get_in_file_list
+    # function: get_in_file_list
     # search the inpath for files, make list
     # filelist = []
     # for entry in os.scandir(inpath):

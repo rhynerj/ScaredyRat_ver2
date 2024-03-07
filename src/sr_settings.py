@@ -238,6 +238,12 @@ class Epoch:
 
         return sub_epoch_labels, sub_epoch_timings
 
+    def get_sub_epochs_with_int_timings(self):
+        """
+        Return the sub_epoch dict of this epoch, with the timings converted to ints.
+        """
+        return {k: [int(x) for x in v.split(',')[0:3]] for k, v in self.sub_epochs.items()}
+
 
 class TrialSettings:
     """
