@@ -170,7 +170,7 @@ class EpochSettings(dict):
         if use_default:
             self['Fear Conditioning'] = [Epoch()]
 
-    def get_epoch_by_label(self, trial_type, epoch_label):
+    def get_epoch_by_label(self, trial_type, epoch_label):  # DELETE? no usages outside test
         """
         Return all epochs for trial type that match given label (empty list if no matches)
         """

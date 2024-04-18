@@ -471,13 +471,14 @@ def get_freezing_darting(datadict, ntones, freezing_threshold, darting_threshold
 
         # add freezing and darting times to overall lists
         all_freezing_times += freezing_times
+        # print(tone_label, len(freezing_times), len(darting_times))
         all_darting_times += darting_times
 
     return all_freezing, all_freezing_times, all_darting, all_darting_times
 
 
 # individual
-def plot_outputs(anim, id, trial_type_full, outpath, trial_type, ntones, fts, dts, epoch_label, print_settings, print_labels):
+def plot_outputs(anim, id, trial_type_full, outpath, prefix, ntones, fts, dts, epoch_label, print_settings, print_labels):
     colormap = [[245 / 256, 121 / 256, 58 / 256],
                 [169 / 256, 90 / 256, 161 / 256],
                 [133 / 256, 192 / 256, 249 / 256],
@@ -577,7 +578,7 @@ def plot_outputs(anim, id, trial_type_full, outpath, trial_type, ntones, fts, dt
     # define where to save the fig
     # fname = outpath + '/' + trial_type + '-' + epoch_label + '-plot-{}'
     # fname = fname.format(id)
-    fname = os.path.join(outpath, f'{trial_type}-{epoch_label}-plot-{id}')
+    fname = os.path.join(outpath, f'{prefix}-plot-{id}')  # prefix is either {trial_type_abbr} or {trial_type_abbr}-{epoch_label}
 
     plt.savefig(fname, dpi=300)
     plt.savefig(fname + '.eps', format='eps', dpi=300)
