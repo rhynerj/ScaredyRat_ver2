@@ -1,4 +1,4 @@
-import os, sys
+import os
 import re
 import numpy as np
 import pandas as pd
@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import math
-import time
-import PySimpleGUI as sg
 
 
 # print = sg.Print # Set print to go to a window rather than the terminal
@@ -957,24 +955,27 @@ def all_freezing_out(prefix, inpath, outpath):
 
 
 # compiled
-def all_velocity_out(prefix, inpath, outpath, num_epoch, epoch_level=False):
+def all_velocity_out(prefix, inpath, outpath, num_epoch, full_analysis, epoch_level=False):
     """
     Combine data from all csvs related to general velocity measurements and write to output file.
     If epoch_level, also write more detailed max data csv.
     """
-    mean_csvs = scaredy_find_csvs(inpath, f'{prefix}-mean')
-    med_csvs = scaredy_find_csvs(inpath, f'{prefix}-median')
     max_csvs = scaredy_find_csvs(inpath, f'{prefix}-max')
-    sem_csvs = scaredy_find_csvs(inpath, f'{prefix}-SEM')
 
-    # combine data into a single df for each csv list
-    means, meds, maxes, sems = [compress_data(csvs, 0) for csvs in [mean_csvs, med_csvs, max_csvs, sem_csvs]]
+    # full velocity summary only for full analysis (else just max)
+    if full_analysis:
+        mean_csvs = scaredy_find_csvs(inpath, f'{prefix}-mean')
+        med_csvs = scaredy_find_csvs(inpath, f'{prefix}-median')
+        sem_csvs = scaredy_find_csvs(inpath, f'{prefix}-SEM')
 
-    # merge data frames into one with all data
-    all_data = concat_vel_data(means, sems, meds, maxes, num_epoch)
+        # combine data into a single df for each csv list
+        means, meds, maxes, sems = [compress_data(csvs, 0) for csvs in [mean_csvs, med_csvs, max_csvs, sem_csvs]]
 
-    outfile = os.path.join(outpath, f'All-{prefix}-VelocitySummary.csv')
-    all_data.to_csv(outfile)
+        # merge data frames into one with all data
+        all_data = concat_vel_data(means, sems, meds, maxes, num_epoch)
+
+        outfile = os.path.join(outpath, f'All-{prefix}-VelocitySummary.csv')
+        all_data.to_csv(outfile)
 
     if epoch_level:
         # combine a more detailed version of the epoch max velocity and write to its own file
@@ -984,7 +985,7 @@ def all_velocity_out(prefix, inpath, outpath, num_epoch, epoch_level=False):
 
 
 # compiled
-def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, num_epoch):
+def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, num_epoch, full_analysis):
     """
     Combine and output velocity, freezing, and darting data for each sub(derived)-epoch in the given list.
     """
@@ -996,110 +997,10 @@ def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, num_epoch):
         d_epoch_prefix = f'{prefix}_{d_epoch}'
 
         # velocity summary data
-        all_velocity_out(d_epoch_prefix, inpath, outpath, num_epoch, True)
+        all_velocity_out(d_epoch_prefix, inpath, outpath, num_epoch, full_analysis, True)
 
         # darting summary data
         all_darting_out(d_epoch_prefix, inpath, outpath)
 
         # freezing summary data
         all_freezing_out(d_epoch_prefix, inpath, outpath)
-
-
-# is the compiled fn
-def compile_SR(trial_type, epoch_label, num_epoch, num_d_epoch, d_epoch_list, behavior, inpath, outpath):
-    """
-    TODO -> rename function more descriptive name (i.e. is writing summary csvs), move to sr_commpiled
-    """
-
-    epoch_prefix = f'{trial_type}-{epoch_label}'
-
-    # print(inpath+trialType + '-' + behavior)
-    # combine the data from all darting csvs and write to file
-    all_darting_out(epoch_prefix, inpath, outpath)
-    # darting_csvs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '-darting')
-    # darting_outfile = os.path.join(outpath, 'All-' + trial_type + '-' + epoch_label + '-darting.csv')
-    # darting_data = concat_all_darting(darting_csvs, 0)
-    # darting_data.to_csv(darting_outfile)
-
-    # combine the data from all freezing csvs and write to file
-    all_freezing_out(epoch_prefix, inpath, outpath)
-    # freezing_csvs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '-freezing')
-    # freezing_outfile = os.path.join(outpath, 'All-' + trial_type + '-' + epoch_label + '-Percent_freezing.csv')
-    # freezing_data = concat_all_freezing(freezing_csvs, 0)
-    # freezing_data.to_csv(freezing_outfile)
-
-    # combine data from all csvs related to general velocity measurements and write to output file
-    all_velocity_out(trial_type, inpath, outpath, num_epoch)
-    # mean_csvs = scaredy_find_csvs(inpath, trial_type + '-mean')
-    # med_csvs = scaredy_find_csvs(inpath, trial_type + '-median')
-    # max_csvs = scaredy_find_csvs(inpath, trial_type + '-max')
-    # sem_csvs = scaredy_find_csvs(inpath, trial_type + '-SEM')
-    # maxes = compress_data(max_csvs, 0)
-    # means = compress_data(mean_csvs, 0)
-    # meds = compress_data(med_csvs, 0)
-    # sems = compress_data(sem_csvs, 0)
-    # all_data = concat_data(means, sems, meds, maxes, num_epoch)
-    # outfile = os.path.join(outpath, 'All-' + trial_type + '-VelocitySummary.csv')
-    # all_data.to_csv(outfile)
-
-    # combine data from all csvs related to epoch-specific velocity measurements and write to output file
-    all_velocity_out(epoch_prefix, inpath, outpath, num_epoch, True)
-    # e_mean_csvs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '-mean')
-    # e_med_csvs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '-median')
-    # e_max_csvs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '-max')
-    # e_sem_csvs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '-SEM')
-    # e_maxes = compress_data(e_max_csvs, 0)
-    # e_means = compress_data(e_mean_csvs, 0)
-    # e_meds = compress_data(e_med_csvs, 0)
-    # e_sems = compress_data(e_sem_csvs, 0)
-    # all_data = concat_data(e_means, e_sems, e_meds, e_maxes, num_epoch)
-    # outfile = os.path.join(outpath, 'All-' + trial_type + '-' + epoch_label + '-VelocitySummary.csv')
-    # all_data.to_csv(outfile)
-
-    # combine a more detailed version of the epoch max velocity and write to its own file
-    # e_maxes_single = concat_all_max(e_max_csvs)
-    # outfile = os.path.join(outpath, 'All-' + trial_type + '-' + epoch_label + '-MaxVel.csv')
-    # e_maxes_single.to_csv(outfile)
-
-    # allMax = concat_all_max(max_csvs)
-    # outfile = os.path.join(outpath, 'All-'+ trialType + '-MaxVel.csv' )
-    # allMax.to_csv(outfile)
-
-    # summaries for each sub_epoch
-    all_subepoch_out(d_epoch_list, epoch_prefix, inpath, outpath, num_epoch)
-    # num_d_epoch = len(d_epoch_list)
-    # # print(dEpoch_list)
-    # if num_d_epoch == 0 or d_epoch_list == ['']:
-    #     return
-    # # print(num_dEpoch)
-    # for i in range(0, num_d_epoch):
-    #     # print(trialType + '-' + epochLabel + '_' + dEpoch_list[i] + '-max')
-    #     maxdECSVs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-max')
-    #     # print(maxdECSVs)
-    #     allMax = concat_all_max(maxdECSVs)
-    #     outfile = os.path.join(outpath, 'All-' + trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-MaxVel.csv')
-    #     allMax.to_csv(outfile)
-    #
-    #     meandECSVs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-mean')
-    #     meddECSVs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-median')
-    #     SEMdECSVs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-SEM')
-    #     maxes = compress_data(maxdECSVs, 0)
-    #     means = compress_data(meandECSVs, 0)
-    #     meds = compress_data(meddECSVs, 0)
-    #     sems = compress_data(SEMdECSVs, 0)
-    #     all_data = concat_data(means, sems, meds, maxes, num_epoch)
-    #     outfile = os.path.join(outpath,
-    #                            'All-' + trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-VelocitySummary.csv')
-    #     all_data.to_csv(outfile)
-    #
-    #     dEdartingCSVs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-darting')
-    #     dEdarting_outfile = os.path.join(outpath,
-    #                                      'All-' + trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-darting.csv')
-    #     dEdartingData = concat_all_darting(dEdartingCSVs, 0)
-    #     dEdartingData.to_csv(dEdarting_outfile)
-    #
-    #     dEfreezingCSVs = scaredy_find_csvs(inpath, trial_type + '-' + epoch_label + '_' + d_epoch_list[i] + '-freezing')
-    #     dEfreezing_outfile = os.path.join(outpath, 'All-' + trial_type + '-' + epoch_label + '_' + d_epoch_list[
-    #         i] + '-Percent_freezing.csv')
-    #     dEfreezingData = concat_all_freezing(dEfreezingCSVs, 0)
-    #     dEfreezingData.to_csv(dEfreezing_outfile)

@@ -2,6 +2,7 @@ class InOutSettings:
     """
     Class for settings related to input and output files and paths
     """
+
     def __init__(self, inpath='./', ind_outpath='./', com_outpath='./',
                  com_only=False, full_vel=False):
         self.inpath = inpath
@@ -55,12 +56,14 @@ class SheetSettings:
     """
     Class for settings related to input sheets
     """
+
     def __init__(self, sheet_list=None, trial_type_list=None):
         self.sheet_list = sheet_list
         self.trial_type_list = trial_type_list
 
     @classmethod
-    def settings_from_dict(cls, settings_dict):
+    def settings_from_dict(cls, epoch_settings, settings_dict):
+        # transform raw settings to lists
         settings = []
         # raw settings are dict values
         for raw_setting in settings_dict.values():
@@ -69,12 +72,16 @@ class SheetSettings:
             settings.append(setting)
         sheet_list, detection_labels, trial_full_list, trial_abbr_list = settings
 
+        # add default epochs for any new detection_labels
+        epoch_settings = epoch_settings.init_default_epochs(detection_labels)
+
+        # create list of TrialType objects
         trial_type_list = []
         for detect_label, trial_full, trial_abbr in zip(detection_labels, trial_full_list, trial_abbr_list):
             trial_type_item = TrialType(detect_label, trial_full, trial_abbr)
             trial_type_list.append(trial_type_item)
 
-        return cls(sheet_list=sheet_list, trial_type_list=trial_type_list)
+        return cls(sheet_list=sheet_list, trial_type_list=trial_type_list), epoch_settings
 
     @property
     def sheet_list(self):
@@ -100,12 +107,19 @@ class SheetSettings:
         self.__trial_type_list = trial_type_list
 
     def __repr__(self):
-        trial_type_strings = [str(trial_type) for trial_type in self.trial_type_list]
-        return f'{self.sheet_list}, {trial_type_strings}'
+        # trial_type_strings = [str(trial_type) for trial_type in self.trial_type_list]
+        return f'sheet list: {self.sheet_list}, trial type list: {self.trial_type_list}'
 
     def __str__(self):
         trial_type_strings = [str(trial_type) for trial_type in self.trial_type_list]
-        return f'{self.sheet_list}, {trial_type_strings}'
+        return f'sheet list: {self.sheet_list}, trial type list: {trial_type_strings}'
+
+    def disintegrate_sheet_settings(self):
+        detection_labels = [trial_type.detection_settings_labels for trial_type in self.trial_type_list]
+        trial_type_fulls = [trial_type.trial_type_full for trial_type in self.trial_type_list]
+        trial_type_abbrs = [trial_type.trial_type_abbr for trial_type in self.trial_type_list]
+
+        return self.sheet_list, detection_labels, trial_type_fulls, trial_type_abbrs
 
     def get_trial_type_by_label(self, detection_label):
         """
@@ -113,7 +127,8 @@ class SheetSettings:
         """
         try:
             # provide default with next instead? (see next() documentation) (eg. next((arg for arg in sys.argv if not os.path.exists(arg)), None))
-            return next(trial_types for trial_types in self.trial_type_list if trial_types.detection_settings_label == detection_label)
+            return next(trial_types for trial_types in self.trial_type_list if
+                        trial_types.detection_settings_label == detection_label)
         except StopIteration:
             print(f'No trial type matches given detection label {detection_label}')
             raise KeyError
@@ -123,6 +138,7 @@ class TrialType:
     """
     Class for settings related to trial type
     """
+
     def __init__(self,
                  detection_settings_label='Fear Conditioning',
                  trial_type_full='Fear Conditioning',
@@ -159,28 +175,40 @@ class TrialType:
         return f'{self.detection_settings_label}, {self.trial_type_full}, {self.__trial_type_abbr}'
 
     def __str__(self):
-        return f'{self.detection_settings_label}, {self.trial_type_full}, {self.__trial_type_abbr}'
+        return f'(detection label: {self.detection_settings_label}, trial type: {self.trial_type_full}, trial abbr: {self.__trial_type_abbr})'
 
 
 class EpochSettings(dict):
     """
-    Class to map epoch names to settings (inherits from dict)
+    Class to map detection settings names to settings (inherits from dict)
     """
+
     def __init__(self, use_default=True):
         if use_default:
             self['Fear Conditioning'] = [Epoch()]
 
-    def get_epoch_by_label(self, trial_type, epoch_label):  # DELETE? no usages outside test
+    def get_epoch_by_label(self, trial_type, epoch_label):
         """
-        Return all epochs for trial type that match given label (empty list if no matches)
+        Return epoch for given trial type that matches given label (None if no matches)
         """
-        return [epoch for epoch in self[trial_type] if epoch.label == epoch_label]
+        # provide default with next instead? (see next() documentation) (eg. next((arg for arg in sys.argv if not os.path.exists(arg)), None))
+        return next((epoch for epoch in self[trial_type] if epoch.label == epoch_label), None)
+
+    def init_default_epochs(self, detection_settings_labels):
+        """
+        Add default Epoch objects to settings for all keys in given key_list that are not already present.
+        """
+        for label in detection_settings_labels:
+            if label not in self:
+                self[label] = [Epoch()]
+        return self
 
 
 class Epoch:
     """
     Class for settings related to epochs
     """
+
     def __init__(self, label='Tone', use_space=True, epoch_count=7, sub_epochs=None):
         self.label = label
         self.use_space = use_space
@@ -227,7 +255,8 @@ class Epoch:
         return f'{self.label}, {self.use_space}, {self.epoch_count}, {self.sub_epochs}'
 
     def __str__(self):
-        return f'{self.label}, {self.use_space}, {self.epoch_count}, {self.sub_epochs}'
+        return f'(label: {self.label}, use space: {self.use_space}, ' \
+               f'epoch count: {self.epoch_count}, sub epochs: {self.sub_epochs})'
 
     def get_sub_epoch_lists(self):
         """
@@ -249,6 +278,7 @@ class TrialSettings:
     """
     Class for settings related to trial specifications
     """
+
     def __init__(self, bin_secs=1, baseline_duration=120.0, freeze_thresh=0.1, dart_thresh=20.0):
         self.bin_secs = bin_secs
         self.baseline_duration = baseline_duration
@@ -292,3 +322,8 @@ class TrialSettings:
     @dart_thresh.setter
     def dart_thresh(self, dart_thresh):
         self.__dart_thresh = dart_thresh
+
+    def __str__(self):
+        return f'(bin secs: {self.bin_secs}, baseline dur: {self.baseline_duration}, ' \
+               f'freeze thresh: {self.freeze_thresh}, dart thresh: {self.dart_thresh})'
+

@@ -8,7 +8,10 @@ import PySimpleGUI as sg
 # sys.path.append('./src')
 
 import src.sr_functions as srf
+import src.sr_individual as sri
+import src.sr_compiled as srco
 import src.sr_help as srh
+import src.sr_settings as srs
 
 # print = sg.Print # Set print to go to a window rather than the terminal
 # print = sg.Multiline.print
@@ -97,7 +100,7 @@ def print_help(helpkey):
 
 def setting_to_string(setting):
     """
-    Stringify the given setting
+    Stringify the given setting -> TODO: consider moving to sr_settings.py
     """
     if isinstance(setting, list):
         if len(setting) == 0:
@@ -113,10 +116,11 @@ def setting_to_string(setting):
 
 def d_epoch_time_entry(d_epoch_item, d_epoch_times):
     """
-    TODO: figure out what this does -> seems to add stuff to layout?
+    TODO: remove (superceded by sub_epoch_time_entry)
     """
     # if not settingToString(dEpochItem) == '':
-    return [sg.Text(setting_to_string(d_epoch_item), size=(20, 1)), sg.Input(setting_to_string(d_epoch_times), size=(40, 1))]
+    return [sg.Text(setting_to_string(d_epoch_item), size=(20, 1)),
+            sg.Input(setting_to_string(d_epoch_times), size=(40, 1))]
 
 
 # else:
@@ -163,7 +167,8 @@ def parse_sheet_settings(raw_sheet_setting):
 
 
 def parse_trial_settings(raw_trial_settings):
-    bin_secs, baseline_duration, freeze_thresh, dart_thresh = (float(setting) for setting in raw_trial_settings.values())
+    bin_secs, baseline_duration, freeze_thresh, dart_thresh = (float(setting) for setting in
+                                                               raw_trial_settings.values())
     bin_secs = int(bin_secs)
     return bin_secs, baseline_duration, freeze_thresh, dart_thresh
 
@@ -192,6 +197,7 @@ def parse_epoch_settings(raw_epoch_settings):
 
     return setting_list
 
+
 # def parse_epoch_settings(raw_epoch_settings):
 #     epoch_label = []
 #     derived_epoch_list = []
@@ -216,12 +222,16 @@ def parse_epoch_settings(raw_epoch_settings):
 #     return (epoch_label, derived_epoch_list, d_epoch_time)
 
 
-def print_settings(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_settings):
-    print('sheet settings', parse_sheet_settings(raw_sheet_settings))
+def print_settings(sheet_settings, trial_settings, epoch_settings):
+    # print('sheet settings', parse_sheet_settings(raw_sheet_settings))
+    #
+    # print('trial settings', parse_trial_settings(raw_trial_settings))
+    #
+    # print('epoch settings', parse_epoch_settings(raw_epoch_settings))
 
-    print('trial settings', parse_trial_settings(raw_trial_settings))
-
-    print('epoch settings', parse_epoch_settings(raw_epoch_settings))
+    print('sheet settings', sheet_settings)
+    print('trial settings', trial_settings)
+    print('epoch settings', epoch_settings)
 
 
 def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_settings):
@@ -593,11 +603,11 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
             if (epoch_ct == 0):
                 continue
             # srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [''],'Darting',outpath,outpath2)
-            srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [''], 'Freezing', outpath, outpath2)
+            srco.compile_SR(trialType_list[k], epoch_iter, epoch_ct, [''], outpath, outpath2)
             # srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()),'Darting',outpath,outpath2)
-            srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1,
-                           list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()),
-                           'Freezing', outpath, outpath2)
+            srco.compile_SR(trialType_list[k], epoch_iter, epoch_ct,
+                            list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()), outpath,
+                            outpath2)
 
             # for dEpoch_iter in raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs']:
             #     srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [dEpoch_iter],'Darting',outpath,outpath2)
@@ -606,8 +616,1084 @@ def run_SR(inpath, outpath, raw_sheet_settings, raw_trial_settings, raw_epoch_se
 
 
 ################################################################################################
-## Execution
+# Construction Zone (will be Functions)
 ################################################################################################
+
+#####1
+def make_main_window(in_out_settings):
+    """
+    Set up and return the main window.
+    """
+    # TODO: function: make_main_window(in_out_settings) -> return sg.Window('ScaredyRat', layout_MainWindow)
+    # Setup menu layouts
+    layout_main = [[sg.Text('Main Window.\nUse buttons to navigate ScaredyRat settings')],
+                   [sg.Button('Select Input Folder'), sg.Text(in_out_settings.inpath, key='INDIR', size=(64, 1))],
+                   # , sg.Text(inpath, key='INDIR', size=(64,1))
+                   [sg.Button('Select Individual Animal Output Folder'),
+                    sg.Text(in_out_settings.ind_outpath, key='OUTDIR', size=(64, 1))],
+                   # , sg.Text(outpath, key='OUTDIR', size=(64,1))
+                   [sg.Button('Select Compiled Output Folder'),
+                    sg.Text(in_out_settings.com_outpath, key='OUTDIR2', size=(64, 1))],
+                   # , sg.Text(outpath2, key='OUTDIR2', size=(64,1))
+                   [sg.Button('Sheet Settings')],
+                   [sg.Button('Trial Settings')],
+                   [sg.Button('Epoch and Derived Epoch Settings')],
+                   # NEW
+                   [sg.CBox('Run Full Analysis', pad=(20, 0), default=in_out_settings.full_vel, key='FullAnalysis')],
+                   # end new
+                   [sg.Button('View Settings')],
+                   [sg.Text('')],
+                   [sg.Button('Run')],
+                   [sg.Button('Compile Only')],
+                   [sg.Text('')],
+                   [sg.Button('Exit')]]
+    return sg.Window('ScaredyRat', layout_main)
+    #####1
+
+
+#####3
+def make_sheet_window(sheet_list, detection_labels, trial_type_fulls, trial_type_abbrs):
+    """
+    Set up and return the sheet settings window.
+    """
+    # TODO: function: make_sheet_window(sheet_settings) -> return window
+    sheet_col = [
+        [sg.Text('List of sheet names', size=(40, 1)), sg.Input(setting_to_string(sheet_list), size=(120, 1)),
+         sg.Button('Help', key='SheetNameHelp')],
+        [sg.Text('Trail Control Settings Labels', size=(40, 1)),
+         sg.Input(setting_to_string(detection_labels), size=(120, 1)),
+         sg.Button('Help', key='DetLblHelp')],
+        [sg.Text('Trial Type List', size=(40, 1)),
+         sg.Input(setting_to_string(trial_type_fulls), size=(120, 1)),
+         sg.Button('Help', key='TrialTypeHelp')],
+        [sg.Text('Trial Type Abbreviation List', size=(40, 1)),
+         sg.Input(setting_to_string(trial_type_abbrs), size=(120, 1)), sg.Button('Help', key='TrialTypeABRHelp')]
+    ]
+    layout_sheet = [[sg.Text('Sheet Information')],
+                    [sg.Column(sheet_col)],
+                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+
+    return sg.Window('Sheet Settings', layout_sheet)
+    #####3
+
+
+#####5
+# unnecessary -> called SheetSettings.settings_from_dict instead
+#####5
+
+
+#####4
+def run_sheet_window(sheet_window, sheet_settings, epoch_settings):
+    """
+    Handle events for sheet_window, updating sheet and epoch settings if 'Apply' or 'Ok' selected.
+    Return sheet and epoch settings, with updates if there were any.
+    """
+    # TODO: function: run_sheet_window(sheet_window, sheet_settings, epoch_settings)
+    # Event Loop to process "events" and get the "values" of the inputs
+    while True:
+        sheet_event, sheet_values = sheet_window.read()
+        print("sheet event:", sheet_event, "sheet values:", sheet_values, sep="\n")
+
+        if sheet_event == sg.WIN_CLOSED or sheet_event == 'Cancel':  # if user closes window or clicks cancel
+            sheet_window.close()
+            break
+        if sheet_event == 'Apply':  # if user clicks apply
+            # note: raw_sheet_settings are sheet window values (which is why run_sheet_window doesn't take them as arg)
+            sheet_settings, epoch_settings = srs.SheetSettings.settings_from_dict(sheet_values, epoch_settings)
+        if sheet_event == 'Ok':  # if user clicks ok -> similar to apply, but also closes window
+            sheet_settings, epoch_settings = srs.SheetSettings.settings_from_dict(sheet_values, epoch_settings)
+            sheet_window.close()
+            break
+        if sheet_event == 'SheetNameHelp':
+            print_help(sheet_event)
+        if sheet_event == 'DetLblHelp':
+            print_help(sheet_event)
+        if sheet_event == 'TrialTypeHelp':
+            print_help(sheet_event)
+        if sheet_event == 'TrialTypeABRHelp':
+            print_help(sheet_event)
+
+    # close window
+    sheet_window.close()
+
+    # return updated settings
+    return sheet_settings, epoch_settings
+    #####4
+
+
+#####6
+def make_trial_window(trial_settings):
+    """
+    Set up and return the trial settings window.
+    """
+    # TODO: function: make_trial_window(trial_settings) -> return window
+    trial_col = [
+        [sg.Text('Time Bin Duration (s)', size=(15, 1)), sg.Input(trial_settings.bin_secs, size=(20, 1)),
+         sg.Button('Help', key='TimeHelp')],
+        [sg.Text('Baseline Duration (# time bins)', size=(15, 1)),
+         sg.Input(trial_settings.baseline_duration, size=(20, 1)),
+         sg.Button('Help', key='baselineHelp')],
+        [sg.Text('Freezing Threshold (velocity units)', size=(15, 1)),
+         sg.Input(trial_settings.freeze_thresh, size=(20, 1)),
+         sg.Button('Help', key='FreezeTHelp')],
+        [sg.Text('Darting Threshold (velocity units)', size=(15, 1)),
+         sg.Input(trial_settings.dart_thresh, size=(20, 1)),
+         sg.Button('Help', key='dartTHelp')],
+    ]
+    layout_trial = [[sg.Text('Trial Information')],
+                    [sg.Column(trial_col)],
+                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+    return sg.Window('Trial Settings', layout_trial)
+    #####6
+
+
+#####7
+def run_trial_window(trial_window, trial_settings):
+    """
+    Handle events for trial_window, updating trial settings if 'Apply' or 'Ok' selected.
+    Return trial settings, with updates if there were any.
+    """
+    # TODO: function: run_trial_window(trial_window, trial_settings)
+    # Event Loop to process "events" and get the "values" of the inputs
+    while True:
+        trial_event, trial_values = trial_window.read()
+        if trial_event == sg.WIN_CLOSED or trial_event == 'Cancel':  # if user closes window or clicks cancel
+            trial_window.close()
+            break
+        if trial_event == 'Apply':  # if user clicks apply
+            trial_settings = srs.TrialSettings.trial_from_dict(trial_values)
+        if trial_event == 'Ok':  # if user clicks ok
+            trial_settings = srs.TrialSettings.trial_from_dict(trial_values)
+            trial_window.close()
+            break
+        # this should be if trial_event in ['TimeHelp', baselineHelp, etc]
+        if trial_event == 'TimeHelp':
+            print_help(trial_event)
+        if trial_event == 'baselineHelp':
+            print_help(trial_event)
+        if trial_event == 'FreezeTHelp':
+            print_help(trial_event)
+        if trial_event == 'dartTHelp':
+            print_help(trial_event)
+
+    # close window
+    trial_window.close()
+
+    # return updated settings
+    return trial_settings
+    #####7
+
+
+def get_detection_label_and_epoch(detection_settings_labels, epoch_settings, epoch_values, case):
+    """
+    Return appropriate detection settings label and Epoch for specified case.
+    """
+    # based on case, set vars
+    # 0 = initial set-up, 1 = epoch added, 2 = epoch deleted, 3 = drop down selection
+    if case == 0:
+        # default to first items upon initial window launch
+        detection_label = detection_settings_labels[0]
+        selected_epoch = epoch_settings[detection_label][0]
+    else:
+        # for all other cases, detection label is selected
+        detection_label = epoch_values['TrialSelectDropdown']
+        # added epoch case -> display added epoch
+        if case == 1:
+            # !note: that this relies on the new epoch having been added first
+            selected_epoch = srs.EpochSettings.get_epoch_by_label(detection_label, epoch_values['NewEpoch'])
+            # throw exception if epoch hasn't been added correctly for some reason
+            if selected_epoch is None:
+                raise KeyError('Specified detection settings and epoch label combination does not exist in Settings.')
+        # deleted epoch case -> make empty epoch for selected
+        elif case == 2:
+            selected_epoch = srs.Epoch('', '', '', {})
+        # case where trial type (detection settings) or epoch was selected from dropdown
+        elif case == 3:
+            selected_epoch = srs.EpochSettings.get_epoch_by_label(detection_label, epoch_values['EpochSelectDropdown'])
+
+    return detection_label, selected_epoch
+
+
+def sub_epoch_time_entry(sub_epoch_label, sub_epoch_times):
+    """
+    Return GUI list item for given sub_epoch, with label and times input field.
+    """
+    # if not settingToString(dEpochItem) == '':
+    return [sg.Text(sub_epoch_label, size=(20, 1)),
+            sg.Input(sub_epoch_times, size=(40, 1), key=sub_epoch_label)]
+
+
+#####8
+def make_epoch_window(detection_settings_labels, epoch_settings, epoch_values=None, case=0):
+    """
+    Set up and return the epoch settings window.
+    Note: this function is intended both for initial set up and to be rerun to reflect state changes.
+    """
+    # TODO: function: make_epoch_window(detection_settings_label, epoch_settings, case=0) -> return window
+    # case is an int that indicates what to use vals to autofill fields:
+    # 'TrialSelectDropdown', 'EpochSelectDropdown', 'nEpochs', 'dEpoch_list', derived epoch timing
+
+    # get the appropriate detection label and selected epoch
+    detection_label, selected_epoch = get_detection_label_and_epoch(detection_settings_labels, epoch_settings,
+                                                                    epoch_values, case)
+
+    # possible epoch labels for current detection label
+    epoch_options = [epoch.label for epoch in epoch_settings[detection_label]]
+
+    epoch_col = [
+                    [sg.Text('Trial Type'),
+                     sg.Combo(detection_settings_labels, default_value=detection_label,
+                              enable_events=True, key='TrialSelectDropdown')],
+                    [sg.Text('Epoch base label to add', size=(20, 1)),
+                     sg.Input('', size=(40, 1), key='NewEpoch'),
+                     sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
+                     sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
+                    [sg.Text('Epoch base Label'),
+                     sg.Combo(epoch_options, default_value=selected_epoch.label,
+                              enable_events=True, key='EpochSelectDropdown'),
+                     sg.Button('Delete This Epoch', key='DelEpoch')],
+                    [sg.Text('')],
+                    [sg.Text('Number of epochs per trial', size=(40, 1)),
+                     sg.Input(str(selected_epoch.epoch_count), size=(40, 1),
+                              key='nEpochs'),
+                     sg.Button('Help', key='EpochCountHelp')],
+                    [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(','.join(selected_epoch.sub_epochs),
+                                                                           size=(40, 1), key='dEpoch_list'),
+                     sg.Button('Help', key='dEpochHelp')],
+                    [sg.Text('Derived Epoch Timing:')],
+                    # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
+                    [sg.Text('')]] + [sub_epoch_time_entry(sub_epoch_label, sub_epoch_times)
+                                      for sub_epoch_label, sub_epoch_times in
+                                      selected_epoch.sub_epochs.items()]
+
+    layout_epoch = [[sg.Text('Epoch Information')],
+                    [sg.Column(epoch_col)],
+                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+
+    return sg.Window('Epoch Settings (Click Apply to update the derived epoch timing list)',
+                     layout_epoch)
+    #####8
+
+
+#####10
+def add_epoch(epoch_window, epoch_values, detection_settings_labels, epoch_settings):
+    """
+    Add inputted epoch to Epoch settings and update epoch settings window.
+    Return updated window and settings.
+    """
+    # TODO: function: add_epoch(epoch_values, detection_settings_label, epoch_settings)
+    # add to epoch_settings dict
+    # create new Epoch object with values from fields -> init with epoch_count as 1 and empty dict for sub_epochs
+    # note: old version had sub_epoch default as {'': ''}
+    new_epoch = srs.Epoch(epoch_values['NewEpoch'], epoch_values['UseSpace'], 1, {})
+    # append new Epoch to current detection label's list
+    epoch_settings[epoch_values['TrialSelectDropdown']].append(new_epoch)
+
+    # close old window
+    epoch_window.close()
+    # make new window -> call make_epoch_window() w/ case = 1 (which means autofill from entered vals)
+    epoch_window = make_epoch_window(detection_settings_labels, epoch_settings, epoch_values=epoch_values, case=1)
+
+    # return updated window and epoch settings
+    return epoch_window, epoch_settings
+    #####10
+
+
+#####11
+def delete_epoch(epoch_window, epoch_values, detection_settings_labels, epoch_settings):
+    """
+    Deleted selected epoch from Epoch settings and update epoch settings window.
+    Return updated window and settings.
+    """
+    # TODO: function: delete_epoch(epoch_values, detection_settings_label, epoch_settings)
+    # delete selected epoch from epoch_settings for selected detection settings
+    epoch_settings[epoch_values['TrialSelectDropdown']] = [epoch for epoch
+                                                           in epoch_settings[epoch_values['TrialSelectDropdown']]
+                                                           if epoch.label != epoch_values['EpochSelectDropdown']]
+
+    # close old window
+    epoch_window.close()
+    # make new window -> call make_epoch_window() w/ case = 2 (empty default vals, but not dropdowns)
+    epoch_window = make_epoch_window(detection_settings_labels, epoch_settings, epoch_values=epoch_values, case=2)
+
+    # return updated window and epoch settings
+    return epoch_window, epoch_settings
+    #####11
+
+
+#####12
+def update_epoch_settings(epoch_values, epoch_settings):
+    """
+    Update epoch count and derived epoch settings for epoch settings of selected epoch.
+    Return updated epoch settings.
+    """
+    # TODO: function: update_epoch_settings(epoch_values, epoch_settings)
+    # note: this fn updates the sub_epochs field dict
+    # -> take advantage of dict fns to add/delete, or just make new dict?
+
+    # get selected epoch
+    curr_epoch = epoch_settings.get_epoch_by_label(epoch_values['TrialSelectDropdown'],
+                                                   epoch_values['EpochSelectDropdown'])
+
+    # update epoch count
+    curr_epoch.epoch_count = epoch_values['nEpochs']
+
+    # new sub_epoch list
+    new_sub_epochs = [sub_epoch.strip() for sub_epoch in epoch_values['dEpoch_list'].split(',')]
+    # update sub_epochs to new dict
+    curr_epoch.sub_epochs = {sub_epoch: epoch_values[sub_epoch].strip() for sub_epoch in new_sub_epochs}
+
+    return epoch_settings
+    #####12
+
+
+#####9
+def run_epoch_window(epoch_window, detection_labels, epoch_settings):
+    """
+    Handle events for epoch_window, adding/deleting epochs; allowing selection of specific epochs;
+    and updating epoch settings if 'Apply' or 'Ok' selected.
+    Return epoch settings, with updates if there were any.
+    """
+    # TODO: function: run_epoch_window(epoch_window, detection_settings_label, epoch_settings)
+    # Event Loop to process "events" and get the "values" of the inputs
+    while True:
+        epoch_event, epoch_values = epoch_window.read()
+        print('epoch event', epoch_event, 'epoch values', epoch_values)
+
+        if epoch_event == sg.WIN_CLOSED or epoch_event == 'Cancel':  # if user closes window or clicks cancel
+            break
+
+        if epoch_event == 'AddEpoch':
+            # update and reload window, update epoch settings to include new epoch
+            epoch_window, epoch_settings = add_epoch(epoch_window, epoch_values, detection_labels,
+                                                     epoch_settings)
+        if epoch_event == 'DelEpoch':
+            # update and reload window, update epoch settings to omit deleted epoch
+            epoch_window, epoch_settings = delete_epoch(epoch_window, epoch_values, detection_labels,
+                                                        epoch_settings)
+
+        if epoch_event == 'EpochSelectDropdown':
+            epoch_window.close()  # close old window, open new (w/ make)
+            # call make_epoch_window() w/ case = 3 (get field vals for selected trial and epoch)
+            epoch_window = make_epoch_window(detection_labels, epoch_settings,
+                                             epoch_values=epoch_values, case=3)
+
+        if epoch_event == 'TrialSelectDropdown':
+            epoch_window.close()  # close old window, open new (w/ make)
+            # call make_epoch_window() w/ case = 3 (get field vals for selected trial and epoch)
+            epoch_window = make_epoch_window(detection_labels, epoch_settings,
+                                             epoch_values=epoch_values, case=3)
+
+        if epoch_event == 'Ok':  # if user clicks Ok
+            # update epoch settings for selected epoch
+            epoch_settings = update_epoch_settings(epoch_values, epoch_settings)
+
+            break
+
+        if epoch_event == 'Apply':  # if user clicks Apply to update the window
+            # update epoch settings for selected epoch
+            epoch_settings = update_epoch_settings(epoch_values, epoch_settings)
+
+            epoch_window.close()  # close old window, open new (w/ make)
+            # call make_epoch_window() w/ case = 3 (which just updates based on current values)
+            epoch_window = make_epoch_window(detection_labels, epoch_settings,
+                                             epoch_values=epoch_values, case=3)
+
+        if epoch_event == 'EpochHelp':
+            print_help(epoch_event)
+        if epoch_event == 'dEpochHelp':
+            print_help(epoch_event)
+        if epoch_event == 'dEpochTimeHelp':
+            print_help(epoch_event)
+        if epoch_event == 'EpochCountHelp':
+            print_help(epoch_event)
+
+    # close window
+    epoch_window.close()
+
+    # return updated settings
+    return epoch_settings
+
+
+#####2
+# TODO:function: run_main_window; placeholder
+
+################################################################################################
+# Execution
+################################################################################################
+
+def main():
+    # sg.Print(size=(180,25))
+    # sg.Print()
+
+    # init default settings objects
+    in_out_settings = srs.InOutSettings()
+    sheet_settings = srs.SheetSettings()
+    trial_settings = srs.TrialSettings(),
+    epoch_settings = srs.EpochSettings()
+
+    #####1
+    # TODO: function: make_main_window(in_out_settings) -> return sg.Window('ScaredyRat', layout_MainWindow)
+    # Setup menu layouts
+    # layout_MainWindow = [[sg.Text('Main Window.\nUse buttons to navigate ScaredyRat settings')],
+    #                      [sg.Button('Select Input Folder'), sg.Text(inpath, key='INDIR', size=(64, 1))],
+    #                      # , sg.Text(inpath, key='INDIR', size=(64,1))
+    #                      [sg.Button('Select Individual Animal Output Folder'),
+    #                       sg.Text(outpath, key='OUTDIR', size=(64, 1))],
+    #                      # , sg.Text(outpath, key='OUTDIR', size=(64,1))
+    #                      [sg.Button('Select Compiled Output Folder'), sg.Text(outpath2, key='OUTDIR2', size=(64, 1))],
+    #                      # , sg.Text(outpath2, key='OUTDIR2', size=(64,1))
+    #                      [sg.Button('Sheet Settings')],
+    #                      [sg.Button('Trial Settings')],
+    #                      [sg.Button('Epoch and Derived Epoch Settings')],
+    #                      [sg.Button('View Settings')],
+    #                      [sg.Text('')],
+    #                      [sg.Button('Run')],
+    #                      [sg.Button('Compile Only')],
+    #                      [sg.Text('')],
+    #                      [sg.Button('Exit')]]
+    # mainWindow = sg.Window('ScaredyRat', layout_MainWindow)
+    main_window = make_main_window(in_out_settings)
+    #####1
+
+    # i = 0
+    # while i < 20:
+    #     print('\n')
+    #     i += 1
+
+    # print 20 blank lines
+    print('\n' * 20)
+
+    #####2
+    # TODO: function: run_main_window(main_window, in_out_settings,
+    #  sheet_settings, trial_settings,
+    #            epoch_settings, full_analysis)
+    # (note that this ends basically at the end of main, will call other fns
+    while True:
+        event, values = main_window.read()
+        if event == sg.WIN_CLOSED or event == 'Exit':  # if user closes window or clicks cancel
+            # sg.PrintClose()
+            break
+        # NEW
+        elif event == 'Run Full Analysis':
+            in_out_settings.full_vel = not in_out_settings.full_vel
+            main_window['FullAnalysis'].update(in_out_settings.full_vel)
+            # end new
+        elif event == 'Select Input Folder':
+            in_out_settings.inpath = sg.popup_get_folder(
+                'Please select the directory from which to load the Ethovision-style data',
+                initial_folder=in_out_settings.inpath)
+            main_window['INDIR'].update(
+                in_out_settings.inpath)  # should be no need to cast to string; but add back if things break
+        elif event == 'Select Individual Animal Output Folder':
+            in_out_settings.ind_outpath = sg.popup_get_folder(
+                'Please select the directory in which to output the individual data files',
+                initial_folder=in_out_settings.ind_outpath)
+            main_window['OUTDIR'].update(in_out_settings.ind_outpath)
+        elif event == 'Select Compiled Output Folder':
+            in_out_settings.com_outpath = sg.popup_get_folder(
+                'Please select the directory in which to output the compiled files',
+                initial_folder=in_out_settings.com_outpath)
+            main_window['OUTDIR2'].update(in_out_settings.com_outpath)
+        elif event == 'Sheet Settings':
+            # update parse_sheet_settings to work with settings objects -> actually, probably won't need to parse at all here
+            # sheetlist, detectionSettingsLabel, trialTypeFull_list, trialType_list = parse_sheet_settings(
+            #     raw_sheetSettings)
+            sheet_list, detection_labels, trial_type_fulls, trial_type_abbrs = sheet_settings.disintegrate_sheet_settings()
+
+            #####3
+            # TODO: function: make_sheet_window(sheet_settings) -> return window
+            # sheetCol = [
+            #     [sg.Text('List of sheet names', size=(40, 1)), sg.Input(setting_to_string(sheetlist), size=(120, 1)),
+            #      sg.Button('Help', key='SheetNameHelp')],
+            #     [sg.Text('Trail Control Settings Labels', size=(40, 1)),
+            #      sg.Input(setting_to_string(detectionSettingsLabel), size=(120, 1)),
+            #      sg.Button('Help', key='DetLblHelp')],
+            #     [sg.Text('Trial Type List', size=(40, 1)),
+            #      sg.Input(setting_to_string(trialTypeFull_list), size=(120, 1)),
+            #      sg.Button('Help', key='TrialTypeHelp')],
+            #     [sg.Text('Trial Type Abbreviation List', size=(40, 1)),
+            #      sg.Input(setting_to_string(trialType_list), size=(120, 1)), sg.Button('Help', key='TrialTypeABRHelp')]
+            # ]
+            # layout_SheetWin = [[sg.Text('Sheet Information')],
+            #                    [sg.Column(sheetCol)],
+            #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            #
+            # sheetWindow = sg.Window('Sheet Settings', layout_SheetWin)
+            sheet_window = make_sheet_window(sheet_list, detection_labels, trial_type_fulls, trial_type_abbrs)
+            #####3
+
+            #####4
+            # TODO: function: run_sheet_window(sheet_window, sheet_settings, epoch_settings)
+            # Event Loop to process "events" and get the "values" of the inputs
+            # while True:
+            #     sheet_event, sheet_values = sheet_window.read()
+            #     print("sheet event:", sheet_event, "sheet values:", sheet_values, sep="\n")
+            #     if sheet_event == sg.WIN_CLOSED or sheet_event == 'Cancel':  # if user closes window or clicks cancel
+            #         sheet_window.close()
+            #         break
+            #     if sheet_event == 'Apply':  # if user clicks apply
+            #         # note: raw_sheet_settings are sheet window values (which is why run_sheet_window doesn't take them as arg)
+            #         #####5
+            #         # TODO: function: update_sheet_settings(raw_sheet_settings, sheet_settings, epoch_settings)
+            #         # # update sheet_settings -> this should be done by creating a new object from dict probably (match sure input formatting matches up)
+            #         # raw_sheetSettings = sheet_values
+            #         # # this function (parse_sheet_settings) will need to be modified to create the appropriate settings objects
+            #         # sheetlist, detectionSettingsLabel, trialTypeFull_list, trialType_list = parse_sheet_settings(
+            #         #     raw_sheetSettings)
+            #         #
+            #         # # make sure there is corresponding entry in epoch_settings
+            #         # # trying to only add new epochs here -> should be able to take advantage of dicts: i.e. add if key not in pattern
+            #         # for iter in range(0, len(detectionSettingsLabel)):
+            #         #     if (detectionSettingsLabel[iter] in raw_epochSettings):
+            #         #         continue
+            #         #     else:
+            #         #         # this will be replaced by a default Epoch object, but make sure inserted properly into epoch_settings
+            #         #         raw_epochSettings[detectionSettingsLabel[iter]] = {
+            #         #             'Tone': {
+            #         #                 'Label': 'Tone',
+            #         #                 'UseSpace': True,
+            #         #                 'EpochCount': 1,
+            #         #                 'SubEpochs': {
+            #         #                     'PreTone': '0,-30,0,True',
+            #         #                     'Shock': '-1,0,5,True',
+            #         #                     'PostShock': '-1,5,35,True'}
+            #         #             }
+            #         #         }
+            #         #####5
+            #         sheet_settings, epoch_settings = SheetSettings.settings_from_dict(sheet_values, epoch_settings)
+            #
+            #     if sheet_event == 'Ok':  # if user clicks ok -> similar to apply, but also closes window
+            #         #####5
+            #         # call update_sheet_settings()
+            #         # raw_sheetSettings = sheet_values
+            #         # # this function (parse_sheet_settings) will need to be modified to create the appropriate settings objects
+            #         # sheetlist, detectionSettingsLabel, trialTypeFull_list, trialType_list = parse_sheet_settings(
+            #         #     raw_sheetSettings)
+            #         # # print(len(detectionSettingsLabel))
+            #         # # print(len(raw_epochSettings))
+            #         #
+            #         # for iter in range(0, len(detectionSettingsLabel)):
+            #         #     if (detectionSettingsLabel[iter] in raw_epochSettings):
+            #         #         continue
+            #         #     else:
+            #         #         raw_epochSettings[detectionSettingsLabel[iter]] = {
+            #         #             'Tone': {
+            #         #                 'Label': 'Tone',
+            #         #                 'UseSpace': True,
+            #         #                 'EpochCount': 1,
+            #         #                 'SubEpochs': {
+            #         #                     'PreTone': '0,-30,0,True',
+            #         #                     'Shock': '-1,0,5,True',
+            #         #                     'PostShock': '-1,5,35,True'}
+            #         #             }
+            #         #         }
+            #         #####5
+            #         sheet_settings, epoch_settings = SheetSettings.settings_from_dict(sheet_values, epoch_settings)
+            #
+            #         sheet_window.close()
+            #         break
+            #     if sheet_event == 'SheetNameHelp':
+            #         print_help(sheet_event)
+            #     if sheet_event == 'DetLblHelp':
+            #         print_help(sheet_event)
+            #     if sheet_event == 'TrialTypeHelp':
+            #         print_help(sheet_event)
+            #     if sheet_event == 'TrialTypeABRHelp':
+            #         print_help(sheet_event)
+            #
+            # sheet_window.close()
+
+            sheet_settings, epoch_settings = run_sheet_window(sheet_window, sheet_settings, epoch_settings)
+            #####4
+
+        elif event == 'Trial Settings':
+            #####6
+            # TODO: function: make_trial_window(trial_settings) -> return window
+            # binSize, baselineDuration, freezeThresh, dartThresh = parse_trial_settings(raw_trialSettings)
+            # trialCol = [
+            #     [sg.Text('Time Bin Duration (s)', size=(15, 1)), sg.Input((binSize), size=(20, 1)),
+            #      sg.Button('Help', key='TimeHelp')],
+            #     [sg.Text('Baseline Duration (# time bins)', size=(15, 1)), sg.Input((baselineDuration), size=(20, 1)),
+            #      sg.Button('Help', key='baselineHelp')],
+            #     [sg.Text('Freezing Threshold (velocity units)', size=(15, 1)), sg.Input((freezeThresh), size=(20, 1)),
+            #      sg.Button('Help', key='FreezeTHelp')],
+            #     [sg.Text('Darting Threshold (velocity units)', size=(15, 1)), sg.Input((dartThresh), size=(20, 1)),
+            #      sg.Button('Help', key='dartTHelp')],
+            # ]
+            # layout_TrialWin = [[sg.Text('Trial Information')],
+            #                    [sg.Column(trialCol)],
+            #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            # trialWindow = sg.Window('Trial Settings', layout_TrialWin)
+            trial_window = make_trial_window(trial_settings)
+            #####6
+
+            #####7
+            # TODO: function: run_trial_window(trial_window, trial_settings)
+            # Event Loop to process "events" and get the "values" of the inputs
+            # while True:
+            #     trial_event, trial_values = trial_window.read()
+            #     if trial_event == sg.WIN_CLOSED or trial_event == 'Cancel':  # if user closes window or clicks cancel
+            #         trial_window.close()
+            #         break
+            #     if trial_event == 'Apply':  # if user clicks apply
+            #         raw_trialSettings = trial_values
+            #     if trial_event == 'Ok':  # if user clicks ok
+            #         raw_trialSettings = trial_values
+            #         trial_window.close()
+            #         break
+            #     # this should be if trial_event in ['TimeHelp', baselineHelp, etc]
+            #     if trial_event == 'TimeHelp':
+            #         print_help(trial_event)
+            #     if trial_event == 'baselineHelp':
+            #         print_help(trial_event)
+            #     if trial_event == 'FreezeTHelp':
+            #         print_help(trial_event)
+            #     if trial_event == 'dartTHelp':
+            #         print_help(trial_event)
+            # trial_window.close()
+            trial_settings = run_trial_window(trial_window, trial_settings)
+            #####7
+
+        elif event == 'Epoch and Derived Epoch Settings':
+            # get current list of detection settings labels
+            detection_labels = sheet_settings.disintegrate_sheet_settings()[1]
+
+            #####8
+            # TODO: function: make_epoch_window(detection_settings_label, epoch_settings, src=0) -> return window
+            # src is an int that indicates what to use vals to autofill fields:
+            # 'TrialSelectDropdown', 'EpochSelectDropdown', 'nEpochs', 'dEpoch_list', derived epoch timing
+            # default src=0, which is to use first item to autofill as shown below
+            # sheetlist, detectionSettingsLabel, trialTypeFull_list, trialType_list = parse_sheet_settings(
+            #     raw_sheetSettings)
+            # # tcs_keys, epoch_dict, sub_epoch_dicts = parseEpochSettings(raw_epochSettings)  #epochLabel, derivedEpoch_list, derivedEpochTiming_list = parseEpochSettings(raw_epochSettings)
+            # trialID_epochMenu = 0
+            # epochID = 0
+            # tmp_epoch = list(raw_epochSettings[detectionSettingsLabel[0]])  # autofill with first item for current label
+            # epochCol = [
+            #                [sg.Text('Trial Type'),
+            #                 sg.Combo(detectionSettingsLabel, default_value=detectionSettingsLabel[0],
+            #                          enable_events=True, key='TrialSelectDropdown')],
+            #                [sg.Text('Epoch base label to add', size=(20, 1)),
+            #                 sg.Input('', size=(40, 1), key='NewEpoch'),
+            #                 sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
+            #                 sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
+            #                [sg.Text('Epoch base Label'),
+            #                 sg.Combo(list(raw_epochSettings[detectionSettingsLabel[0]]), default_value=tmp_epoch,
+            #                          enable_events=True, key='EpochSelectDropdown'),
+            #                 sg.Button('Delete This Epoch', key='DelEpoch')],
+            #                [sg.Text('')],
+            #                [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
+            #                    raw_epochSettings[detectionSettingsLabel[0]][tmp_epoch[0]]['EpochCount']), size=(40, 1),
+            #                    key='nEpochs'),
+            #                 sg.Button('Help', key='EpochCountHelp')],
+            #                [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(
+            #                    list(raw_epochSettings[detectionSettingsLabel[0]][tmp_epoch[0]]['SubEpochs'])),
+            #                    size=(40, 1), key='dEpoch_list'),
+            #                 sg.Button('Help', key='dEpochHelp')],
+            #                [sg.Text('Derived Epoch Timing:')],
+            #                # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
+            #                [sg.Text('')]] + [d_epoch_time_entry(iter_key, iter_val) for iter_key, iter_val in
+            #                                  raw_epochSettings[detectionSettingsLabel[0]][tmp_epoch[0]][
+            #                                      'SubEpochs'].items()]
+            # layout_EpochWin = [[sg.Text('Epoch Information')],
+            #                    [sg.Column(epochCol)],
+            #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            #
+            # epochWindow = sg.Window('Epoch Settings (Click Apply to update the derived epoch timing list)',
+            #                         layout_EpochWin)
+
+            epoch_window = make_epoch_window(detection_labels, epoch_settings, case=0)
+
+            #####8
+
+            #####9
+            # TODO: function: run_epoch_window(epoch_window, detection_settings_label, epoch_settings)
+            # Event Loop to process "events" and get the "values" of the inputs
+            # while True:
+            #     epoch_event, epoch_values = epoch_window.read()
+            #     print('epoch event', epoch_event, 'epoch values', epoch_values)
+            #     # print(epoch_event)
+            #     # print('\n')
+            #     # print(epoch_values)
+            #     # print('\n')
+            #     # print(str(len(epoch_values)))
+            #     # print('\n')
+            #     # print(len(epoch_values))
+            #     # print(epoch_values[range(0,len(epoch_values))])
+            #     if epoch_event == 'AddEpoch':
+            #         #####10
+            #         # TODO: function: add_epoch(epoch_values, detection_settings_label, epoch_settings)
+            #         # add to epoch_settings dict
+            #         # raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['NewEpoch']] = {
+            #         #     'Label': epoch_values['NewEpoch'], 'UseSpace': epoch_values['UseSpace'], 'EpochCount': 1,
+            #         #     'SubEpochs': {'': ''}}
+            #         # # call make_epoch_window() w/ src = 1 (which means autofill from entered vals)
+            #         # epochCol = [
+            #         #                [sg.Text('Trial Type'),
+            #         #                 sg.Combo(detectionSettingsLabel, default_value=epoch_values['TrialSelectDropdown'],
+            #         #                          enable_events=True, key='TrialSelectDropdown')],
+            #         #                [sg.Text('Epoch base label to add', size=(20, 1)),
+            #         #                 sg.Input('', size=(40, 1), key='NewEpoch'),
+            #         #                 sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
+            #         #                 sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
+            #         #                [sg.Text('Epoch base label'),
+            #         #                 sg.Combo(list(raw_epochSettings[epoch_values['TrialSelectDropdown']]),
+            #         #                          default_value=epoch_values['NewEpoch'], enable_events=True,
+            #         #                          key='EpochSelectDropdown'),
+            #         #                 sg.Button('Delete This Epoch', key='DelEpoch')],
+            #         #                [sg.Text('')],
+            #         #                [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['NewEpoch']][
+            #         #                        'EpochCount']), size=(40, 1), key='nEpochs'),
+            #         #                 sg.Button('Help', key='EpochCountHelp')],
+            #         #                [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(list(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['NewEpoch']][
+            #         #                        'SubEpochs'])), size=(40, 1), key='dEpoch_list'),
+            #         #                 sg.Button('Help', key='dEpochHelp')],
+            #         #                [sg.Text('Derived Epoch Timing:')],
+            #         #                # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
+            #         #                [sg.Text('')]] + [d_epoch_time_entry(iter_key, iter_val) for iter_key, iter_val in
+            #         #                                  raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                                      epoch_values['NewEpoch']]['SubEpochs'].items()]
+            #         # layout_EpochWin = [[sg.Text('Epoch Information')],
+            #         #                    [sg.Column(epochCol)],
+            #         #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            #         #
+            #         # # !!!!!! don't forget to close old window first
+            #         # epoch_window.close()
+            #         # epoch_window = sg.Window('Epoch Settings', layout_EpochWin)  # have fn return new window
+            #
+            #         epoch_window, epoch_settings = add_epoch(epoch_window, epoch_values, detection_labels,
+            #                                                  epoch_settings)
+            #         #####10
+            #
+            #     if epoch_event == 'DelEpoch':
+            #         #####11
+            #         # TODO: function: delete_epoch(epoch_values, detection_settings_label, epoch_settings)
+            #         # del from epoch_settings dict
+            #         # del raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']]
+            #         # # call make_epoch_window() w/ src = 2 (empty default vals, but not dropdowns)
+            #         # tmp_epoch = list(epoch_values['TrialSelectDropdown'])
+            #         # epochCol = [
+            #         #     [sg.Text('Trial Type'),
+            #         #      sg.Combo(detectionSettingsLabel, default_value=epoch_values['TrialSelectDropdown'],
+            #         #               enable_events=True, key='TrialSelectDropdown')],
+            #         #     [sg.Text('Epoch base label to add', size=(20, 1)), sg.Input('', size=(40, 1), key='NewEpoch'),
+            #         #      sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
+            #         #      sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
+            #         #     [sg.Text('Epoch base label'),
+            #         #      sg.Combo(list(raw_epochSettings[epoch_values['TrialSelectDropdown']]), default_value='',
+            #         #               enable_events=True, key='EpochSelectDropdown'),
+            #         #      sg.Button('Delete This Epoch', key='DelEpoch')],
+            #         #     [sg.Text('')],
+            #         #     [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input('', size=(40, 1), key='nEpochs'),
+            #         #      sg.Button('Help', key='EpochCountHelp')],
+            #         #     [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input('', size=(40, 1), key='dEpoch_list'),
+            #         #      sg.Button('Help', key='dEpochHelp')],
+            #         #     [sg.Text('Derived Epoch Timing:')],
+            #         #     # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
+            #         #     # [sg.Text('')]] + [dEpochTimeEntry(iter_key, iter_val) for iter_key, iter_val in raw_epochSettings[epoch_values['TrialSelectDropdown']][tmp_epoch[0]]['SubEpochs'].items()]
+            #         # ]
+            #         # layout_EpochWin = [[sg.Text('Epoch Information')],
+            #         #                    [sg.Column(epochCol)],
+            #         #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            #         # # !!!!!! don't forget to close old window first
+            #         # epoch_window.close()
+            #         # epoch_window = sg.Window('Epoch Settings', layout_EpochWin)  # have fn return new window
+            #         # #####11
+            #         epoch_window, epoch_settings = delete_epoch(epoch_window, epoch_values, detection_labels,
+            #                                                     epoch_settings)
+            #
+            #     if epoch_event == 'EpochSelectDropdown':
+            #         # call make_epoch_window() w/ src = 3 (similar to add epoch, but 'EpochSelectDropdown' instead of 'NewEpoch'))
+            #         # epochCol = [
+            #         #                [sg.Text('Trial Type'),
+            #         #                 sg.Combo(detectionSettingsLabel, default_value=epoch_values['TrialSelectDropdown'],
+            #         #                          enable_events=True, key='TrialSelectDropdown')],
+            #         #                [sg.Text('Epoch base label to add', size=(20, 1)),
+            #         #                 sg.Input('', size=(40, 1), key='NewEpoch'),
+            #         #                 sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
+            #         #                 sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
+            #         #                [sg.Text('Epoch base label'),
+            #         #                 sg.Combo(list(raw_epochSettings[epoch_values['TrialSelectDropdown']]),
+            #         #                          default_value=epoch_values['EpochSelectDropdown'], enable_events=True,
+            #         #                          key='EpochSelectDropdown'),
+            #         #                 sg.Button('Delete This Epoch', key='DelEpoch')],
+            #         #                [sg.Text('')],
+            #         #                [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                        epoch_values['EpochSelectDropdown']]['EpochCount']), size=(40, 1),
+            #         #                    key='nEpochs'),
+            #         #                 sg.Button('Help', key='EpochCountHelp')],
+            #         #                [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(list(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                        epoch_values['EpochSelectDropdown']]['SubEpochs'])), size=(40, 1),
+            #         #                    key='dEpoch_list'),
+            #         #                 sg.Button('Help', key='dEpochHelp')],
+            #         #                [sg.Text('Derived Epoch Timing:')],
+            #         #                # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
+            #         #                [sg.Text('')]] + [d_epoch_time_entry(iter_key, iter_val) for iter_key, iter_val in
+            #         #                                  raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                                      epoch_values['EpochSelectDropdown']]['SubEpochs'].items()]
+            #         # layout_EpochWin = [[sg.Text('Epoch Information')],
+            #         #                    [sg.Column(epochCol)],
+            #         #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            #
+            #         epoch_window.close()  # close old window, open new (w/ make)
+            #         # epoch_window = sg.Window('Epoch Settings', layout_EpochWin)
+            #         # call make_epoch_window() w/ case = 3 (similar to add epoch, but 'EpochSelectDropdown' instead of 'NewEpoch'))
+            #         epoch_window = make_epoch_window(detection_labels, epoch_settings,
+            #                                          epoch_values=epoch_values, case=3)
+            #
+            #     if epoch_event == 'TrialSelectDropdown':
+            #         # call make_epoch_window() w/ src = 3 (similar to add epoch, but 'EpochSelectDropdown' instead of 'NewEpoch'))
+            #         # epochCol = [
+            #         #                [sg.Text('Trial Type'),
+            #         #                 sg.Combo(detectionSettingsLabel, default_value=epoch_values['TrialSelectDropdown'],
+            #         #                          enable_events=True, key='TrialSelectDropdown')],
+            #         #                [sg.Text('Epoch base label to add', size=(20, 1)),
+            #         #                 sg.Input('', size=(40, 1), key='NewEpoch'),
+            #         #                 sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
+            #         #                 sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
+            #         #                [sg.Text('Epoch base label'),
+            #         #                 sg.Combo(list(raw_epochSettings[epoch_values['TrialSelectDropdown']]),
+            #         #                          default_value=epoch_values['EpochSelectDropdown'], enable_events=True,
+            #         #                          key='EpochSelectDropdown'),
+            #         #                 sg.Button('Delete This Epoch', key='DelEpoch')],
+            #         #                [sg.Text('')],
+            #         #                [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                        epoch_values['EpochSelectDropdown']]['EpochCount']), size=(40, 1),
+            #         #                    key='nEpochs'),
+            #         #                 sg.Button('Help', key='EpochCountHelp')],
+            #         #                [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(list(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                        epoch_values['EpochSelectDropdown']]['SubEpochs'])), size=(40, 1),
+            #         #                    key='dEpoch_list'),
+            #         #                 sg.Button('Help', key='dEpochHelp')],
+            #         #                [sg.Text('Derived Epoch Timing:')],
+            #         #                # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
+            #         #                [sg.Text('')]] + [d_epoch_time_entry(iter_key, iter_val) for iter_key, iter_val in
+            #         #                                  raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                                      epoch_values['EpochSelectDropdown']]['SubEpochs'].items()]
+            #         # layout_EpochWin = [[sg.Text('Epoch Information')],
+            #         #                    [sg.Column(epochCol)],
+            #         #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            #
+            #         epoch_window.close()  # close old window, open new (w/ make)
+            #         # epoch_window = sg.Window('Epoch Settings', layout_EpochWin)
+            #         # call make_epoch_window() w/ case = 3 (similar to add epoch, but 'EpochSelectDropdown' instead of 'NewEpoch'))
+            #         epoch_window = make_epoch_window(detection_labels, epoch_settings,
+            #                                          epoch_values=epoch_values, case=3)
+            #
+            #     #####11
+            #
+            #     if epoch_event == sg.WIN_CLOSED or epoch_event == 'Cancel':  # if user closes window or clicks cancel
+            #         break
+            #
+            #     if epoch_event == 'Ok':  # if user clicks Ok
+            #         #####12
+            #         # TODO: function: update_epoch_settings(epoch_values, epoch_settings)
+            #         # note: this fn updates the sub_epochs field dict
+            #         # -> take advantage of dict fns to add/delete, or just make new dict?
+            #
+            #         # # print(epoch_values)
+            #         # raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #     'EpochCount'] = epoch_values['nEpochs']
+            #         # dEpochStrList = epoch_values['dEpoch_list'].split(',')
+            #         # old_dEpochStrList = list(
+            #         #     raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #         'SubEpochs'])
+            #         #
+            #         # if (len(dEpochStrList) < len(old_dEpochStrList)):
+            #         #     # Delete sub-epochs that were removed
+            #         #     for rr in range(0, len(old_dEpochStrList)):
+            #         #         if old_dEpochStrList[rr].strip() not in list(map(str.strip, dEpochStrList)):
+            #         #             del raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                 epoch_values['EpochSelectDropdown']]['SubEpochs'][old_dEpochStrList[rr].strip()]
+            #         #     for rr in range(0, len(dEpochStrList)):
+            #         #         raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #             'SubEpochs'][dEpochStrList[rr].strip()] = epoch_values[rr]
+            #         # elif (len(dEpochStrList) > len(old_dEpochStrList)):
+            #         #     # Add new sub-epochs
+            #         #     new_ctr = 0
+            #         #     for rr in range(0, len(dEpochStrList)):
+            #         #         if dEpochStrList[rr].strip() not in list(map(str.strip, old_dEpochStrList)):
+            #         #             raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                 epoch_values['EpochSelectDropdown']]['SubEpochs'][
+            #         #                 dEpochStrList[rr].strip()] = '0,0,0,False'
+            #         #             new_ctr = new_ctr + 1
+            #         #         else:
+            #         #             raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                 epoch_values['EpochSelectDropdown']]['SubEpochs'][dEpochStrList[rr].strip()] = \
+            #         #                 epoch_values[rr - new_ctr]
+            #         # else:
+            #         #     for rr in range(0, len(dEpochStrList)):
+            #         #         if dEpochStrList[rr].strip() == '':
+            #         #             continue
+            #         #         raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #             'SubEpochs'][dEpochStrList[rr].strip()] = epoch_values[rr]
+            #
+            #         # update epoch settings for selected epoch
+            #         epoch_settings = update_epoch_settings(epoch_values, epoch_settings)
+            #         #####12
+            #
+            #         break
+            #
+            #     if epoch_event == 'Apply':  # if user clicks Apply to update the window
+            #         # call update_epoch_settings(epoch_values, epoch_settings)
+            #         # dEpochStrList = epoch_values['dEpoch_list'].split(',')
+            #         # old_dEpochStrList = list(
+            #         #     raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #         'SubEpochs'])
+            #         # raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #     'EpochCount'] = epoch_values['nEpochs']
+            #         #
+            #         # if (len(dEpochStrList) < len(old_dEpochStrList)):
+            #         #     # Delete sub-epochs that were removed
+            #         #     for rr in range(0, len(old_dEpochStrList)):
+            #         #         if old_dEpochStrList[rr].strip() not in list(map(str.strip, dEpochStrList)):
+            #         #             del raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                 epoch_values['EpochSelectDropdown']]['SubEpochs'][old_dEpochStrList[rr].strip()]
+            #         #     for gg in range(0, len(dEpochStrList)):
+            #         #         raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #             'SubEpochs'][dEpochStrList[gg].strip()] = epoch_values[gg]
+            #         # elif (len(dEpochStrList) > len(old_dEpochStrList)):
+            #         #     # Add new sub-epochs
+            #         #     for rr in range(0, len(dEpochStrList)):
+            #         #         if dEpochStrList[rr].strip() not in list(map(str.strip, old_dEpochStrList)):
+            #         #             raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                 epoch_values['EpochSelectDropdown']]['SubEpochs'][
+            #         #                 dEpochStrList[rr].strip()] = '0,0,0,False'
+            #         #         else:
+            #         #             raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                 epoch_values['EpochSelectDropdown']]['SubEpochs'][dEpochStrList[rr].strip()] = \
+            #         #                 epoch_values[rr]
+            #         # else:
+            #         #     for rr in range(0, len(dEpochStrList)):
+            #         #         raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
+            #         #             'SubEpochs'][dEpochStrList[rr].strip()] = epoch_values[rr]
+            #
+            #         #####12
+            #
+            #         # update epoch settings for selected epoch
+            #         epoch_settings = update_epoch_settings(epoch_values, epoch_settings)
+            #
+            #         # call make_epoch_window() w/ case = 3 (similar to add epoch, but 'EpochSelectDropdown' instead of 'NewEpoch'))
+            #         # epochCol = [
+            #         #                [sg.Text('Trial Type'),
+            #         #                 sg.Combo(detectionSettingsLabel, default_value=epoch_values['TrialSelectDropdown'],
+            #         #                          enable_events=True, key='TrialSelectDropdown')],
+            #         #                [sg.Text('Epoch base label to add', size=(20, 1)),
+            #         #                 sg.Input('', size=(40, 1), key='NewEpoch'),
+            #         #                 sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
+            #         #                 sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
+            #         #                [sg.Text('Epoch base label'),
+            #         #                 sg.Combo(list(raw_epochSettings[epoch_values['TrialSelectDropdown']]),
+            #         #                          default_value=epoch_values['EpochSelectDropdown'], enable_events=True,
+            #         #                          key='EpochSelectDropdown'),
+            #         #                 sg.Button('Delete This Epoch', key='DelEpoch')],
+            #         #                [sg.Text('')],
+            #         #                [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                        epoch_values['EpochSelectDropdown']]['EpochCount']), size=(40, 1),
+            #         #                    key='nEpochs'),
+            #         #                 sg.Button('Help', key='EpochCountHelp')],
+            #         #                [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(list(
+            #         #                    raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                        epoch_values['EpochSelectDropdown']]['SubEpochs'])), size=(40, 1),
+            #         #                    key='dEpoch_list'),
+            #         #                 sg.Button('Help', key='dEpochHelp')],
+            #         #                [sg.Text('Derived Epoch Timing:')],
+            #         #                # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
+            #         #                [sg.Text('')]] + [d_epoch_time_entry(iter_key, iter_val) for iter_key, iter_val in
+            #         #                                  raw_epochSettings[epoch_values['TrialSelectDropdown']][
+            #         #                                      epoch_values['EpochSelectDropdown']]['SubEpochs'].items()]
+            #         # layout_EpochWin = [[sg.Text('Epoch Information')],
+            #         #                    [sg.Column(epochCol)],
+            #         #                    [sg.Button('Apply'), sg.Button('Ok'), sg.Button('Cancel')]]
+            #
+            #         epoch_window.close()  # close old window, open new (w/ make)
+            #         # epoch_window = sg.Window('Epoch Settings', layout_EpochWin)
+            #         # call make_epoch_window() w/ case = 3 (which just updates based on current values)
+            #         epoch_window = make_epoch_window(detection_labels, epoch_settings,
+            #                                          epoch_values=epoch_values, case=3)
+            #
+            #     if epoch_event == 'EpochHelp':
+            #         print_help(epoch_event)
+            #     if epoch_event == 'dEpochHelp':
+            #         print_help(epoch_event)
+            #     if epoch_event == 'dEpochTimeHelp':
+            #         print_help(epoch_event)
+            #     if epoch_event == 'EpochCountHelp':
+            #         print_help(epoch_event)
+            # epoch_window.close()
+
+            epoch_settings = run_epoch_window(epoch_window, detection_labels,
+                                              epoch_settings)  # note: detection_labels retrived for use in making winder
+            #####9
+
+        elif event == 'View Settings':
+            # just prints settings (representations based on __str__ methods)
+            print_settings(sheet_settings, trial_settings, epoch_settings)
+
+        elif event == 'Run':
+            # print(raw_sheetSettings)
+            # print('\n')
+            # print(raw_trialSettings)
+            # print('\n')
+            # print(raw_epochSettings)
+            # print('\n')
+            print(sheet_settings, trial_settings, epoch_settings, sep='\n\n')
+            # runMsgWin = sg.Window(' ',[[sg.Text('ScaredyRat is running...')]])
+            # run_SR(inpath, outpath, raw_sheetSettings, raw_trialSettings, raw_epochSettings)
+
+            # run ScaredyRat with current settings -> note: run_SR will be moving back to SR_GUI.py
+            sri.run_SR(in_out_settings, sheet_settings, trial_settings, epoch_settings)
+            # runMsgWin.close()
+            sg.popup('ScaredyRat Complete')
+        elif event == 'Compile Only':
+            # call compiled_output fn
+            srco.compiled_output(in_out_settings, sheet_settings, epoch_settings)
+
+            # sheetlist, detectionSettingsLabel, trialTypeFull_list, trialType_list = parse_sheet_settings(
+            #     raw_sheetSettings)
+            #
+            # for k in range(0,
+            #                len(trialType_list)):  # Should produce darting and freezing files for each trial type x epoch x sub-epoch
+            #
+            #     srf.compile_baseline_sr(trialType_list[k], outpath, outpath2)
+            #
+            #     for epoch_iter in raw_epochSettings[detectionSettingsLabel[k]]:
+            #         epoch_ct = int(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['EpochCount'])
+            #         if (epoch_ct == 0):
+            #             continue
+            #         # srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [''],'Darting',outpath,outpath2)
+            #         srco.compile_SR(trialType_list[k], epoch_iter, epoch_ct, [''], outpath, outpath2)
+            #         # srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()),'Darting',outpath,outpath2)
+            #         srco.compile_SR(trialType_list[k], epoch_iter, epoch_ct,
+            #                                    list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()),
+            #                                    outpath, outpath2)
+
+            # for epoch_iter in raw_epochSettings[detectionSettingsLabel[k]]:
+            #     epoch_ct = int(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['EpochCount'])
+            #     if(epoch_ct==0):
+            #         continue;
+            #     srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [epoch_iter],'Darting',outpath,outpath2)
+            #     srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [epoch_iter],'Freezing',outpath,outpath2)
+
+            #     for dEpoch_iter in raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs']:
+            #         srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [dEpoch_iter],'Darting',outpath,outpath2)
+            #         srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [dEpoch_iter],'Freezing',outpath,outpath2)
+            sg.popup('Compile Complete')
+    main_window.close()
+
+
+# TODO: Start here: write main run fn (#####2); do a test run
+
+
+# below will be replaced with main()
 if __name__ == '__main__':
     # sg.Print(size=(180,25))
     # sg.Print()
@@ -640,8 +1726,10 @@ if __name__ == '__main__':
                 [sg.Text('List of sheet names', size=(40, 1)), sg.Input(setting_to_string(sheetlist), size=(120, 1)),
                  sg.Button('Help', key='SheetNameHelp')],
                 [sg.Text('Trail Control Settings Labels', size=(40, 1)),
-                 sg.Input(setting_to_string(detectionSettingsLabel), size=(120, 1)), sg.Button('Help', key='DetLblHelp')],
-                [sg.Text('Trial Type List', size=(40, 1)), sg.Input(setting_to_string(trialTypeFull_list), size=(120, 1)),
+                 sg.Input(setting_to_string(detectionSettingsLabel), size=(120, 1)),
+                 sg.Button('Help', key='DetLblHelp')],
+                [sg.Text('Trial Type List', size=(40, 1)),
+                 sg.Input(setting_to_string(trialTypeFull_list), size=(120, 1)),
                  sg.Button('Help', key='TrialTypeHelp')],
                 [sg.Text('Trial Type Abbreviation List', size=(40, 1)),
                  sg.Input(setting_to_string(trialType_list), size=(120, 1)), sg.Button('Help', key='TrialTypeABRHelp')]
@@ -773,11 +1861,11 @@ if __name__ == '__main__':
                            [sg.Text('')],
                            [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
                                raw_epochSettings[detectionSettingsLabel[0]][tmp_epoch[0]]['EpochCount']), size=(40, 1),
-                                                                                          key='nEpochs'),
+                               key='nEpochs'),
                             sg.Button('Help', key='EpochCountHelp')],
                            [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(
                                list(raw_epochSettings[detectionSettingsLabel[0]][tmp_epoch[0]]['SubEpochs'])),
-                                                                                  size=(40, 1), key='dEpoch_list'),
+                               size=(40, 1), key='dEpoch_list'),
                             sg.Button('Help', key='dEpochHelp')],
                            [sg.Text('Derived Epoch Timing:')],
                            # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
@@ -887,12 +1975,12 @@ if __name__ == '__main__':
                                    [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
                                        raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                            epoch_values['EpochSelectDropdown']]['EpochCount']), size=(40, 1),
-                                                                                                  key='nEpochs'),
+                                       key='nEpochs'),
                                     sg.Button('Help', key='EpochCountHelp')],
                                    [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(list(
                                        raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                            epoch_values['EpochSelectDropdown']]['SubEpochs'])), size=(40, 1),
-                                                                                          key='dEpoch_list'),
+                                       key='dEpoch_list'),
                                     sg.Button('Help', key='dEpochHelp')],
                                    [sg.Text('Derived Epoch Timing:')],
                                    # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
@@ -924,12 +2012,12 @@ if __name__ == '__main__':
                                    [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
                                        raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                            epoch_values['EpochSelectDropdown']]['EpochCount']), size=(40, 1),
-                                                                                                  key='nEpochs'),
+                                       key='nEpochs'),
                                     sg.Button('Help', key='EpochCountHelp')],
                                    [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(list(
                                        raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                            epoch_values['EpochSelectDropdown']]['SubEpochs'])), size=(40, 1),
-                                                                                          key='dEpoch_list'),
+                                       key='dEpoch_list'),
                                     sg.Button('Help', key='dEpochHelp')],
                                    [sg.Text('Derived Epoch Timing:')],
                                    # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
@@ -976,7 +2064,7 @@ if __name__ == '__main__':
                             else:
                                 raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                     epoch_values['EpochSelectDropdown']]['SubEpochs'][dEpochStrList[rr].strip()] = \
-                                epoch_values[rr - new_ctr]
+                                    epoch_values[rr - new_ctr]
                     else:
                         for rr in range(0, len(dEpochStrList)):
                             if dEpochStrList[rr].strip() == '':
@@ -1012,7 +2100,7 @@ if __name__ == '__main__':
                             else:
                                 raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                     epoch_values['EpochSelectDropdown']]['SubEpochs'][dEpochStrList[rr].strip()] = \
-                                epoch_values[rr]
+                                    epoch_values[rr]
                     else:
                         for rr in range(0, len(dEpochStrList)):
                             raw_epochSettings[epoch_values['TrialSelectDropdown']][epoch_values['EpochSelectDropdown']][
@@ -1035,12 +2123,12 @@ if __name__ == '__main__':
                                    [sg.Text('Number of epochs per trial', size=(40, 1)), sg.Input(setting_to_string(
                                        raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                            epoch_values['EpochSelectDropdown']]['EpochCount']), size=(40, 1),
-                                                                                                  key='nEpochs'),
+                                       key='nEpochs'),
                                     sg.Button('Help', key='EpochCountHelp')],
                                    [sg.Text('Derived Epoch List', size=(20, 1)), sg.Input(setting_to_string(list(
                                        raw_epochSettings[epoch_values['TrialSelectDropdown']][
                                            epoch_values['EpochSelectDropdown']]['SubEpochs'])), size=(40, 1),
-                                                                                          key='dEpoch_list'),
+                                       key='dEpoch_list'),
                                     sg.Button('Help', key='dEpochHelp')],
                                    [sg.Text('Derived Epoch Timing:')],
                                    # [sg.Text('')] ] + [dEpochTimeEntry(derivedEpoch_list[trialID_epochMenu][iter],derivedEpochTiming_list[trialID_epochMenu][iter]) for iter in range(0,len(derivedEpoch_list[trialID_epochMenu]))]
@@ -1090,11 +2178,11 @@ if __name__ == '__main__':
                     if (epoch_ct == 0):
                         continue
                     # srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [''],'Darting',outpath,outpath2)
-                    srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, [''], 'Freezing', outpath, outpath2)
+                    srco.compile_SR(trialType_list[k], epoch_iter, epoch_ct, [''], outpath, outpath2)
                     # srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1, list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()),'Darting',outpath,outpath2)
-                    srf.compile_SR(trialType_list[k], epoch_iter, epoch_ct, 1,
-                                   list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()),
-                                   'Freezing', outpath, outpath2)
+                    srco.compile_SR(trialType_list[k], epoch_iter, epoch_ct,
+                                    list(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['SubEpochs'].keys()),
+                                    outpath, outpath2)
 
                 # for epoch_iter in raw_epochSettings[detectionSettingsLabel[k]]:
                 #     epoch_ct = int(raw_epochSettings[detectionSettingsLabel[k]][epoch_iter]['EpochCount'])
