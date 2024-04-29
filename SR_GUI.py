@@ -85,7 +85,9 @@ def print_help(helpkey):
         'EpochHelp': 'The list of epochs, defined in EthoVision.',
         'dEpochHelp': 'The derived epochs are based on the times defined by the epochs. The list is a comma-seperated list of epoch names, defined by the user.The epoch-based time offset (in seconds) each derived epoch is in the format: [start_index, start_offset, stop_offset, plot_flag].\n\n  - start_index is the epoch index in which the derived epoch started (e.g. 0 would be the start of the epoch, 1 would be the next bin in the epoch, and -1 would skip straight to the end of the epoch).\n\n  - start_offset is the time (in time bins) from the starting index (e.g. -30 would start the derived epoch 30 time steps prior to the epoch start). This number is added to or subtracted from the time identified by start_index.\n\n  - stop_offset is the time (in time bins) from the starting index to end the derived epoch (e.g. 25 would end the derived epoch 25 time steps after the starting index). This number is added to or subtracted from the time identified by start_index.\n\n  - plot_flag is either [True] or [False], and determines whether the derived epoch should (True) or should not (False) be plotted in the velocity plot when ScaredyRat is run.',
     }
-    helpwin_layout = [[sg.Text(help_dict.get(helpkey))],
+    help_text = help_dict[helpkey]
+
+    helpwin_layout = [[sg.Text(help_text, size=(90, None))],
                       [sg.Button('Close')]]
     helpwindow = sg.Window('Help Window', helpwin_layout)
 
@@ -222,13 +224,14 @@ def parse_epoch_settings(raw_epoch_settings):
 #     return (epoch_label, derived_epoch_list, d_epoch_time)
 
 
-def print_settings(sheet_settings, trial_settings, epoch_settings):
+def print_settings(in_out_settings, sheet_settings, trial_settings, epoch_settings):
     # print('sheet settings', parse_sheet_settings(raw_sheet_settings))
     #
     # print('trial settings', parse_trial_settings(raw_trial_settings))
     #
     # print('epoch settings', parse_epoch_settings(raw_epoch_settings))
 
+    print('input/output settings', in_out_settings)
     print('sheet settings', sheet_settings)
     print('trial settings', trial_settings)
     print('epoch settings', epoch_settings)
@@ -638,12 +641,11 @@ def make_main_window(in_out_settings):
                    [sg.Button('Sheet Settings')],
                    [sg.Button('Trial Settings')],
                    [sg.Button('Epoch and Derived Epoch Settings')],
-                   # NEW
-                   [sg.CBox('Run Full Analysis', pad=(20, 0), default=in_out_settings.full_vel, key='FullAnalysis')],
-                   # end new
                    [sg.Button('View Settings')],
                    [sg.Text('')],
-                   [sg.Button('Run')],
+                   [sg.Button('Run'),
+                    sg.CBox('Run Full Velocity Analysis', pad=(20, 0), default=in_out_settings.full_vel,
+                            key='FullAnalysis', enable_events=True)],
                    [sg.Button('Compile Only')],
                    [sg.Text('')],
                    [sg.Button('Exit')]]
@@ -658,16 +660,16 @@ def make_sheet_window(sheet_list, detection_labels, trial_type_fulls, trial_type
     """
     # TODO: function: make_sheet_window(sheet_settings) -> return window
     sheet_col = [
-        [sg.Text('List of sheet names', size=(40, 1)), sg.Input(setting_to_string(sheet_list), size=(120, 1)),
+        [sg.Text('List of sheet names', size=(40, 1)), sg.Multiline(setting_to_string(sheet_list), size=(None, 2)),
          sg.Button('Help', key='SheetNameHelp')],
         [sg.Text('Trail Control Settings Labels', size=(40, 1)),
-         sg.Input(setting_to_string(detection_labels), size=(120, 1)),
+         sg.Multiline(setting_to_string(detection_labels), size=(None, 1)),
          sg.Button('Help', key='DetLblHelp')],
         [sg.Text('Trial Type List', size=(40, 1)),
-         sg.Input(setting_to_string(trial_type_fulls), size=(120, 1)),
+         sg.Multiline(setting_to_string(trial_type_fulls), size=(None, 1)),
          sg.Button('Help', key='TrialTypeHelp')],
         [sg.Text('Trial Type Abbreviation List', size=(40, 1)),
-         sg.Input(setting_to_string(trial_type_abbrs), size=(120, 1)), sg.Button('Help', key='TrialTypeABRHelp')]
+         sg.Multiline(setting_to_string(trial_type_abbrs), size=(None, 1)), sg.Button('Help', key='TrialTypeABRHelp')]
     ]
     layout_sheet = [[sg.Text('Sheet Information')],
                     [sg.Column(sheet_col)],
@@ -800,7 +802,7 @@ def get_detection_label_and_epoch(detection_settings_labels, epoch_settings, epo
         # added epoch case -> display added epoch
         if case == 1:
             # !note: that this relies on the new epoch having been added first
-            selected_epoch = srs.EpochSettings.get_epoch_by_label(detection_label, epoch_values['NewEpoch'])
+            selected_epoch = epoch_settings.get_epoch_by_label(detection_label, epoch_values['NewEpoch'])
             # throw exception if epoch hasn't been added correctly for some reason
             if selected_epoch is None:
                 raise KeyError('Specified detection settings and epoch label combination does not exist in Settings.')
@@ -809,7 +811,7 @@ def get_detection_label_and_epoch(detection_settings_labels, epoch_settings, epo
             selected_epoch = srs.Epoch('', '', '', {})
         # case where trial type (detection settings) or epoch was selected from dropdown
         elif case == 3:
-            selected_epoch = srs.EpochSettings.get_epoch_by_label(detection_label, epoch_values['EpochSelectDropdown'])
+            selected_epoch = epoch_settings.get_epoch_by_label(detection_label, epoch_values['EpochSelectDropdown'])
 
     return detection_label, selected_epoch
 
@@ -844,7 +846,7 @@ def make_epoch_window(detection_settings_labels, epoch_settings, epoch_values=No
                     [sg.Text('Trial Type'),
                      sg.Combo(detection_settings_labels, default_value=detection_label,
                               enable_events=True, key='TrialSelectDropdown')],
-                    [sg.Text('Epoch base label to add', size=(20, 1)),
+                    [sg.Text('New epoch base label', size=(20, 1)),
                      sg.Input('', size=(40, 1), key='NewEpoch'),
                      sg.CBox('Space Present', pad=(20, 0), default=True, key='UseSpace'),
                      sg.Button('Add Epoch Label', key='AddEpoch'), sg.Button('Help', key='EpochHelp')],
@@ -941,7 +943,7 @@ def update_epoch_settings(epoch_values, epoch_settings):
     # new sub_epoch list
     new_sub_epochs = [sub_epoch.strip() for sub_epoch in epoch_values['dEpoch_list'].split(',')]
     # update sub_epochs to new dict
-    curr_epoch.sub_epochs = {sub_epoch: epoch_values[sub_epoch].strip() for sub_epoch in new_sub_epochs}
+    curr_epoch.sub_epochs = {sub_epoch: epoch_values.get(sub_epoch, '').strip() for sub_epoch in new_sub_epochs}
 
     return epoch_settings
     #####12
@@ -1029,7 +1031,7 @@ def main():
     # init default settings objects
     in_out_settings = srs.InOutSettings()
     sheet_settings = srs.SheetSettings()
-    trial_settings = srs.TrialSettings(),
+    trial_settings = srs.TrialSettings()
     epoch_settings = srs.EpochSettings()
 
     #####1
@@ -1075,7 +1077,7 @@ def main():
             # sg.PrintClose()
             break
         # NEW
-        elif event == 'Run Full Analysis':
+        elif event == 'FullAnalysis':
             in_out_settings.full_vel = not in_out_settings.full_vel
             main_window['FullAnalysis'].update(in_out_settings.full_vel)
             # end new
@@ -1636,7 +1638,7 @@ def main():
 
         elif event == 'View Settings':
             # just prints settings (representations based on __str__ methods)
-            print_settings(sheet_settings, trial_settings, epoch_settings)
+            print_settings(in_out_settings, sheet_settings, trial_settings, epoch_settings)
 
         elif event == 'Run':
             # print(raw_sheetSettings)
@@ -1695,6 +1697,9 @@ def main():
 
 # below will be replaced with main()
 if __name__ == '__main__':
+    main()
+
+if False:
     # sg.Print(size=(180,25))
     # sg.Print()
     mainWindow = sg.Window('ScaredyRat', layout_MainWindow)

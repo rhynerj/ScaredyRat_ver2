@@ -442,10 +442,9 @@ def run_SR(in_out_settings=srs.InOutSettings(), sheet_settings=srs.SheetSettings
             # skipFlag = False  # TBR probably
 
             # check the context, skipping if the file isn't an excel sheet or isn't properly labeled
-            # don't need to be checking whether ID is float if casting to float -> can simplify things by casting to float and checking if nan and casting to int and checking if -1
-            # if (ID == "-1" or ID == "nan" or (isinstance(ID, float) and math.isnan(float(ID))) or (
-            #         isinstance(ID, int) and ID == -1)):
-            if int(anim_id) == -1 or math.isnan(float(anim_id)):
+            if (anim_id == "-1" or anim_id == "nan"
+                    or (isinstance(anim_id, float) and math.isnan(float(anim_id)))
+                    or (isinstance(anim_id, int) and anim_id == -1)):
                 print('Animal Detection Failure: failed to load sheet or animal ID not found',
                       anim_id, '\n', ctx, sep='\n')
                 # print(anim_id)

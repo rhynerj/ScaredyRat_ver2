@@ -51,6 +51,14 @@ class InOutSettings:
     def full_vel(self, full_vel):
         self.__full_vel = full_vel
 
+    def __repr__(self):
+        return f'(input: {self.inpath}, individual output: {self.ind_outpath}, ' \
+               f'compiled output: {self.com_outpath}, full analysis: {self.full_vel})'
+
+    def __str__(self):
+        return f'(input: {self.inpath}, individual output: {self.ind_outpath}, ' \
+               f'compiled output: {self.com_outpath}, full analysis: {self.full_vel})'
+
 
 class SheetSettings:
     """
@@ -62,7 +70,8 @@ class SheetSettings:
         self.trial_type_list = trial_type_list
 
     @classmethod
-    def settings_from_dict(cls, epoch_settings, settings_dict):
+    def settings_from_dict(cls, settings_dict, epoch_settings):
+        print(settings_dict)
         # transform raw settings to lists
         settings = []
         # raw settings are dict values
@@ -107,15 +116,15 @@ class SheetSettings:
         self.__trial_type_list = trial_type_list
 
     def __repr__(self):
-        # trial_type_strings = [str(trial_type) for trial_type in self.trial_type_list]
-        return f'sheet list: {self.sheet_list}, trial type list: {self.trial_type_list}'
+        trial_type_strings = [str(trial_type) for trial_type in self.trial_type_list]
+        return f'sheet list: {self.sheet_list}, trial type list: {trial_type_strings}'
 
     def __str__(self):
         trial_type_strings = [str(trial_type) for trial_type in self.trial_type_list]
         return f'sheet list: {self.sheet_list}, trial type list: {trial_type_strings}'
 
     def disintegrate_sheet_settings(self):
-        detection_labels = [trial_type.detection_settings_labels for trial_type in self.trial_type_list]
+        detection_labels = [trial_type.detection_settings_label for trial_type in self.trial_type_list]
         trial_type_fulls = [trial_type.trial_type_full for trial_type in self.trial_type_list]
         trial_type_abbrs = [trial_type.trial_type_abbr for trial_type in self.trial_type_list]
 
@@ -172,7 +181,7 @@ class TrialType:
         self.__trial_type_abbr = trial_type_abbr
 
     def __repr__(self):
-        return f'{self.detection_settings_label}, {self.trial_type_full}, {self.__trial_type_abbr}'
+        return f'(detection label: {self.detection_settings_label}, trial type: {self.trial_type_full}, trial abbr: {self.__trial_type_abbr})'
 
     def __str__(self):
         return f'(detection label: {self.detection_settings_label}, trial type: {self.trial_type_full}, trial abbr: {self.__trial_type_abbr})'
@@ -252,7 +261,8 @@ class Epoch:
         self.__sub_epochs = sub_epochs
 
     def __repr__(self):
-        return f'{self.label}, {self.use_space}, {self.epoch_count}, {self.sub_epochs}'
+        return f'(label: {self.label}, use space: {self.use_space}, ' \
+               f'epoch count: {self.epoch_count}, sub epochs: {self.sub_epochs})'
 
     def __str__(self):
         return f'(label: {self.label}, use space: {self.use_space}, ' \
@@ -289,7 +299,8 @@ class TrialSettings:
     def trial_from_dict(cls, trial_dict):
         bin_secs, baseline_duration, freeze_thresh, dart_thresh = (float(setting) for setting in trial_dict.values())
         bin_secs = int(bin_secs)
-        return cls(bin_secs, baseline_duration, freeze_thresh, dart_thresh)
+        return cls(bin_secs=bin_secs, baseline_duration=baseline_duration,
+                   freeze_thresh=freeze_thresh, dart_thresh=dart_thresh)
 
     @property
     def bin_secs(self):
@@ -323,7 +334,10 @@ class TrialSettings:
     def dart_thresh(self, dart_thresh):
         self.__dart_thresh = dart_thresh
 
-    def __str__(self):
+    def __repr__(self):
         return f'(bin secs: {self.bin_secs}, baseline dur: {self.baseline_duration}, ' \
                f'freeze thresh: {self.freeze_thresh}, dart thresh: {self.dart_thresh})'
 
+    def __str__(self):
+        return f'(bin secs: {self.bin_secs}, baseline dur: {self.baseline_duration}, ' \
+               f'freeze thresh: {self.freeze_thresh}, dart thresh: {self.dart_thresh})'
