@@ -1,3 +1,8 @@
+"""
+Classes to define objects that store ScaredyRat settings and provide related functions.
+"""
+
+
 class InOutSettings:
     """
     Class for settings related to input and output files and paths
