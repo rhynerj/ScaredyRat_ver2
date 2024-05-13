@@ -35,7 +35,7 @@ def scaredy_find_csvs(csv_dir, prefix):
     for root, dirs, names in os.walk(csv_dir):
         for file in names:
             # print(file)
-            if file.startswith(prefix):
+            if file.startswith(prefix) and 'times' not in file:
                 f = os.path.join(root, file)
                 # print(f)
                 csvlist.append(f)
@@ -52,29 +52,38 @@ def compress_data(csvlist, row):
     for csv in csvlist:
         anim = get_anim(csv)
         df = pd.read_csv(csv, index_col=0).transpose()
+        print(df)
         curr_anim_val = pd.DataFrame([df.iloc[row]], index=[anim])
         all_anims = pd.concat([all_anims, curr_anim_val])
 
     return all_anims
 
 
-def concat_all_darting(csvlist, loc):
+def concat_all_csv_list(csvlist, loc):
     """
-    Return the combined darting data for the given time bin for all animals in the CSV list
+    Return the combined data for the given time bin for all animals in the CSV list
     """
-    darting = compress_data(csvlist, loc)
-    return darting
+    combined = compress_data(csvlist, loc)
+    return combined
 
 
 def compile_baseline_sr(trial_type, inpath, outpath):
     """
     Combine the data from the csvs for the baseline measurements for each animal into a single csv file.
     """
-    baseline_csvs = scaredy_find_csvs(inpath, trial_type + '-baseline')
+    # freezing
+    baseline_freezing_csvs = scaredy_find_csvs(inpath, trial_type + '-baseline-freezing')
 
-    baseline_data = concat_all_darting(baseline_csvs, 2)
-    outfile = os.path.join(outpath, 'All-' + trial_type + '-baseline.csv')
-    baseline_data.to_csv(outfile)
+    baseline_freezing_data = concat_all_csv_list(baseline_freezing_csvs, 2)
+    freezing_outfile = os.path.join(outpath, 'All-' + trial_type + '-baseline-freezing.csv')
+    baseline_freezing_data.to_csv(freezing_outfile)
+
+    # darting
+    baseline_darting_csvs = scaredy_find_csvs(inpath, trial_type + '-baseline-darting')
+
+    baseline_darting_data = concat_all_csv_list(baseline_darting_csvs, 0)
+    darting_outfile = os.path.join(outpath, 'All-' + trial_type + '-baseline-darting.csv')
+    baseline_darting_data.to_csv(darting_outfile)
 
 
 def all_darting_out(prefix, inpath, outpath):
@@ -82,8 +91,9 @@ def all_darting_out(prefix, inpath, outpath):
     Combine the data from all darting csvs and write to file
     """
     darting_csvs = scaredy_find_csvs(inpath, f'{prefix}-darting')
+    print(darting_csvs)
     darting_outfile = os.path.join(outpath, f'All-{prefix}-darting.csv')
-    darting_data = concat_all_darting(darting_csvs, 0)
+    darting_data = concat_all_csv_list(darting_csvs, 0)
     darting_data.to_csv(darting_outfile)
 
 
@@ -152,6 +162,7 @@ def all_velocity_out(prefix, inpath, outpath, full_analysis, epoch_level=False):
     If epoch_level, also write more detailed max data csv.
     """
     max_csvs = scaredy_find_csvs(inpath, f'{prefix}-max')
+    max_csvs += scaredy_find_csvs(inpath, f'{prefix}-response')
 
     # full velocity summary only for full analysis (else just max)
     if full_analysis:
@@ -184,7 +195,7 @@ def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, full_analysis):
         return
     for d_epoch in d_epoch_list:
         # add current sub-epoch name to prefix
-        d_epoch_prefix = f'{prefix}_{d_epoch}'
+        d_epoch_prefix = f'{prefix}-{d_epoch}'
 
         # velocity summary data
         all_velocity_out(d_epoch_prefix, inpath, outpath, full_analysis, True)
@@ -196,14 +207,10 @@ def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, full_analysis):
         all_freezing_out(d_epoch_prefix, inpath, outpath)
 
 
-# TODO: START HERE: move fns around (then test again)
-
-def compile_SR(trial_type, epoch_label, d_epoch_list, inpath, outpath, full_analysis):
+def compile_SR(epoch_prefix, d_epoch_list, inpath, outpath, full_analysis):
     """
     Compile data from individual animals into summary csvs.
     """
-
-    epoch_prefix = f'{trial_type}-{epoch_label}'
 
     # combine the data from all darting csvs and write to file
     all_darting_out(epoch_prefix, inpath, outpath)
@@ -212,7 +219,7 @@ def compile_SR(trial_type, epoch_label, d_epoch_list, inpath, outpath, full_anal
     all_freezing_out(epoch_prefix, inpath, outpath)
 
     # combine data from all csvs related to general velocity measurements and write to output file
-    all_velocity_out(trial_type, inpath, outpath, full_analysis)
+    all_velocity_out(epoch_prefix, inpath, outpath, full_analysis)
 
     # combine data from all csvs related to epoch-specific velocity measurements and write to output file
     all_velocity_out(epoch_prefix, inpath, outpath, full_analysis, True)
@@ -236,9 +243,17 @@ def compiled_output(in_out_settings=srs.InOutSettings(), sheet_settings=srs.Shee
         # ran twice in original, once with and once without valid d_epoch_list, but logically that would just cause some files to be written twice (not noticeable in output bc overwrites)
         # get epochs for current trial
         epochs = epoch_settings[trial_type.detection_settings_label]
-        for epoch in epochs:
-            if epoch.epoch_count == 0:
-                continue
-            sub_epoch_labels, _ = epoch.get_sub_epoch_lists()
-            compile_SR(trial_type_abbr, epoch.label, sub_epoch_labels, in_out_settings.ind_outpath,
-                       in_out_settings.com_outpath, in_out_settings.full_vel)
+        print('epochs', epochs)
+        if len(epochs) > 1:
+            for epoch in epochs:
+                if epoch.epoch_count == 0:
+                    continue
+                prefix = f'{trial_type_abbr}-{epoch}'
+                sub_epoch_labels, _ = epoch.get_sub_epoch_lists()
+                compile_SR(prefix, sub_epoch_labels, in_out_settings.ind_outpath, in_out_settings.com_outpath,
+                           in_out_settings.full_vel)
+        else:
+            if epochs[0].epoch_count != 0:
+                sub_epoch_labels, _ = epochs[0].get_sub_epoch_lists()
+                compile_SR(trial_type_abbr, sub_epoch_labels, in_out_settings.ind_outpath, in_out_settings.com_outpath,
+                           in_out_settings.full_vel)

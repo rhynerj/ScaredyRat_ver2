@@ -173,7 +173,7 @@ def get_counts_and_times(vels, freezing_threshold, darting_threshold, bin_secs, 
 
 
 # individual
-def get_baseline_freezing(datadict, freezing_threshold, bin_secs):
+def get_baseline_freezing_darting(datadict, freezing_threshold, darting_threshold, bin_secs):
     """
     Return a dataframe with the number of seconds spent freezing, the number of non-freezing seconds,
     and the percent of time spent freezing and a list of the freezing times at the baseline.
@@ -184,17 +184,21 @@ def get_baseline_freezing(datadict, freezing_threshold, bin_secs):
     end_sec = int(round(vels.index[-1], 0))
     time_range = range(start_sec, end_sec - 1, bin_secs)
 
-    # get freezing counts and time (first two items returned by get_counts_and_times) at baseline
-    # set darting_threshold to None because not applicable
-    freezing_counts, freezing_times = \
-        get_counts_and_times(vels, freezing_threshold, None, bin_secs, 'bfill', time_range)[:2]
+    # get freezing and darting counts and time at baseline
+    freezing_counts, freezing_times, darting_counts, darting_times = \
+        get_counts_and_times(vels, freezing_threshold, darting_threshold, bin_secs, 'bfill', time_range)
     freezing_secs, nonfreezing_secs, percent_freezing = freezing_counts
 
+    # freezing df
     tone_label = 'Baseline Freezing'
     names = ['Baseline Freezing (Time Bins)', 'Baseline Nonfreezing (Time Bins)', 'Baseline Percent Freezing']
     freezing = pd.DataFrame([[freezing_secs, nonfreezing_secs, percent_freezing]], index=[tone_label], columns=names)
 
-    return freezing, freezing_times
+    # darting df
+    tone_label = 'Baseline Darting'
+    darting = pd.DataFrame([[darting_counts]], index=[tone_label], columns=['Darts (count)'])
+
+    return freezing, freezing_times, darting, darting_times
 
 
 # individual

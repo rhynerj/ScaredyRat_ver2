@@ -490,9 +490,8 @@ def run_SR(in_out_settings=srs.InOutSettings(), sheet_settings=srs.SheetSettings
                     continue
 
             # output baseline data csv
-            sri.baseline_data_out(anim_id, anim, outpath, trial_settings.bin_secs,
-                                  trial_settings.baseline_duration, trial_settings.freeze_thresh,
-                                  trial_type_abbr)
+            sri.baseline_data_out(anim_id, anim, outpath, trial_settings.bin_secs, trial_settings.baseline_duration,
+                                  trial_settings.freeze_thresh, trial_settings.dart_thresh, trial_type_abbr)
 
             # output analysis files for given animal, for each epoch and subepoch
             sri.all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr, epochs,

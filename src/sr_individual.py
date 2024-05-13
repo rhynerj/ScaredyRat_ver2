@@ -47,7 +47,8 @@ def get_trial_info(ctx, sheet_settings, epoch_settings):
         return False
 
 
-def baseline_data_out(anim_id, anim, outpath, bin_secs, baseline_duration, freeze_thresh, trial_type_abbr, label=None):
+def baseline_data_out(anim_id, anim, outpath, bin_secs, baseline_duration, freeze_thresh, dart_thresh, trial_type_abbr,
+                      label=None):
     """
     Get baseline freezing data and output csv file.
     """
@@ -56,14 +57,20 @@ def baseline_data_out(anim_id, anim, outpath, bin_secs, baseline_duration, freez
     if label is None:
         label = 'Recording time'
     # filter the dataframe to include only recording times less than or equal to the baseline duration
+    # i.e. before baseline period ends
     # baseline_duration is from TrialSettingss -> default: 120
     baseline = anim[anim[label] <= baseline_duration]
     # call baseline function for df and times
-    baseline_freezing, bfts = srf.get_baseline_freezing(baseline, freezing_threshold=freeze_thresh,
-                                                        bin_secs=bin_secs)
+    baseline_freezing, _, baseline_darting, _ = srf.get_baseline_freezing_darting(baseline,
+                                                                                  freezing_threshold=freeze_thresh,
+                                                                                  darting_threshold=dart_thresh,
+                                                                                  bin_secs=bin_secs)
     # write to output path w/ animal id
-    baseline_outfile = os.path.join(outpath, f'{trial_type_abbr}-baseline-freezing-{anim_id}.csv')
-    baseline_freezing.to_csv(baseline_outfile)
+    baseline_freezing_outfile = os.path.join(outpath, f'{trial_type_abbr}-baseline-freezing-{anim_id}.csv')
+    baseline_freezing.to_csv(baseline_freezing_outfile)
+
+    baseline_darting_outfile = os.path.join(outpath, f'{trial_type_abbr}-baseline-darting-{anim_id}.csv')
+    baseline_darting.to_csv(baseline_darting_outfile)
 
 
 # TODO: add analysis fns here
@@ -113,6 +120,32 @@ def add_tone_timebin_labels(times_df, counts_df):
     return times_df
 
 
+def collapse_time_bins(time_bin_df):
+    # check if time df is empty; if yes, return it as is
+    if time_bin_df.empty:
+        return time_bin_df
+    # get col1 and col2 from df as sets
+    starts = set(time_bin_df['behavior start'])
+    ends = set(time_bin_df['behavior end'])
+    # get all items ony in one set, as sorted list
+    times = sorted(list(starts.symmetric_difference(ends)))
+    # all even idx items are col1, odd idx items are col2
+    start_col = times[::2]
+    end_col = times[1::2]
+    # make new df w/ only start and end cols
+    new_df = pd.DataFrame({'behavior start': start_col, 'behavior end': end_col})
+    # join new df w/ start and labels cols from og df (left, but should produce same behavior as inner join would)
+    new_df = pd.merge(new_df, time_bin_df[['behavior start', 'label']], on='behavior start', how='left')
+
+    return new_df
+
+    # init curr_start to first item from col1
+    # for all items in col2, if not in col1:
+    # set as curr_end
+    # update curr_start to be val from col1 1 row down
+    # delete in between rows
+
+
 # tone labels note:
 # Freezing (Time Bins) and Darts (count) cols
 def convert_times_lists_to_dfs(standard_analysis_results):
@@ -122,15 +155,17 @@ def convert_times_lists_to_dfs(standard_analysis_results):
     """
 
     # convert lists to dfs
-    standard_analysis_results[0:2] = (pd.DataFrame(times, columns=['bin start', 'bin end'])
+    standard_analysis_results[0:2] = (pd.DataFrame(times, columns=['behavior start', 'behavior end'])
                                       for times in standard_analysis_results[0:2])
 
-    # add freezing labels
-    standard_analysis_results[0] = add_tone_timebin_labels(standard_analysis_results[0],
-                                                           standard_analysis_results[3])
-    # add darting labels
-    standard_analysis_results[1] = add_tone_timebin_labels(standard_analysis_results[1],
-                                                           standard_analysis_results[4])
+    print('pre-collapse', add_tone_timebin_labels(standard_analysis_results[0],
+                                                  standard_analysis_results[3]))
+    # add freezing labels and collapse
+    standard_analysis_results[0] = collapse_time_bins(add_tone_timebin_labels(standard_analysis_results[0],
+                                                                              standard_analysis_results[3]))
+    # add darting labels and collapse
+    standard_analysis_results[1] = collapse_time_bins(add_tone_timebin_labels(standard_analysis_results[1],
+                                                                              standard_analysis_results[4]))
 
     return standard_analysis_results
 
