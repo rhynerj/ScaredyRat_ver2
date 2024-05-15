@@ -43,7 +43,7 @@ def scaredy_find_csvs(csv_dir, prefix):
     return csvlist
 
 
-def compress_data(csvlist, row):
+def compress_data(csvlist, data_loc):
     """
     Get the given time bin from each of the CSVs in the given list, and combine the data into a single df with the
     animal id as the index.
@@ -52,49 +52,87 @@ def compress_data(csvlist, row):
     for csv in csvlist:
         anim = get_anim(csv)
         df = pd.read_csv(csv, index_col=0).transpose()
-        print(df)
-        curr_anim_val = pd.DataFrame([df.iloc[row]], index=[anim])
+        curr_anim_val = pd.DataFrame([df.iloc[data_loc]], index=[anim])
         all_anims = pd.concat([all_anims, curr_anim_val])
 
     return all_anims
 
 
-def concat_all_csv_list(csvlist, loc):
+def concat_all_csv_list(csvlist, data_loc):
     """
     Return the combined data for the given time bin for all animals in the CSV list
     """
-    combined = compress_data(csvlist, loc)
+    combined = compress_data(csvlist, data_loc)
     return combined
 
 
-def compile_baseline_sr(trial_type, inpath, outpath):
+def compiled_out(combine_fn, data_loc, name, prefix, inpath, outpath, compile_dfs, compile_names,
+                 file_spec=''):
+    """
+    Combine data from csvs that match given prefix/name combine, output combined data file, add to df and name lists.
+    Return updated df and name lists.
+    """
+    # get csv list
+    csv_list = scaredy_find_csvs(inpath, f'{prefix}-{name}')
+    # combine csvs based on function
+    combined_data = combine_fn(csv_list, data_loc)
+    # output file
+    outfile = os.path.join(outpath, f'All-{prefix}-{file_spec}{name}.csv')
+    combined_data.to_csv(outfile)
+
+    # update and return lists
+    compile_dfs.append(combined_data)
+    compile_names.append(f'{file_spec}{name}')
+
+    return compile_dfs, compile_names
+
+
+def compile_baseline_sr(prefix, inpath, outpath, compile_dfs, compile_names):
     """
     Combine the data from the csvs for the baseline measurements for each animal into a single csv file.
+    Add both baseline dfs to compile lists and return updated.
     """
     # freezing
-    baseline_freezing_csvs = scaredy_find_csvs(inpath, trial_type + '-baseline-freezing')
-
-    baseline_freezing_data = concat_all_csv_list(baseline_freezing_csvs, 2)
-    freezing_outfile = os.path.join(outpath, 'All-' + trial_type + '-baseline-freezing.csv')
-    baseline_freezing_data.to_csv(freezing_outfile)
+    compile_dfs, compile_names = \
+        compiled_out(concat_all_csv_list, 2, 'baseline-freezing', prefix, inpath, outpath, compile_dfs, compile_names)
+    # freezing_name = 'baseline-freezing'
+    # baseline_freezing_csvs = scaredy_find_csvs(inpath, f'{prefix}-{freezing_name}')
+    # # output
+    # baseline_freezing_data = concat_all_csv_list(baseline_freezing_csvs, 2)
+    # freezing_outfile = os.path.join(outpath, f'All-{prefix}-{freezing_name}.csv')
+    # baseline_freezing_data.to_csv(freezing_outfile)
+    # # add to super compile
+    # compile_dfs.append(baseline_freezing_data)
+    # compile_names.append(freezing_name)
 
     # darting
-    baseline_darting_csvs = scaredy_find_csvs(inpath, trial_type + '-baseline-darting')
+    compile_dfs, compile_names = \
+        compiled_out(concat_all_csv_list, 0, 'baseline-darting', prefix, inpath, outpath, compile_dfs, compile_names)
+    # darting_name = 'baseline-darting'
+    # baseline_darting_csvs = scaredy_find_csvs(inpath, f'{prefix}-{darting_name}')
+    #
+    # baseline_darting_data = concat_all_csv_list(baseline_darting_csvs, 0)
+    # darting_outfile = os.path.join(outpath, f'All-{prefix}-{darting_name}.csv')
+    # baseline_darting_data.to_csv(darting_outfile)
+    # # add to super compile
+    # compile_dfs.append(baseline_darting_data)
+    # compile_names.append(darting_name)
 
-    baseline_darting_data = concat_all_csv_list(baseline_darting_csvs, 0)
-    darting_outfile = os.path.join(outpath, 'All-' + trial_type + '-baseline-darting.csv')
-    baseline_darting_data.to_csv(darting_outfile)
+    return compile_dfs, compile_names
 
 
-def all_darting_out(prefix, inpath, outpath):
+def all_darting_out(prefix, inpath, outpath, compile_dfs, compile_names):
     """
     Combine the data from all darting csvs and write to file
     """
-    darting_csvs = scaredy_find_csvs(inpath, f'{prefix}-darting')
-    print(darting_csvs)
-    darting_outfile = os.path.join(outpath, f'All-{prefix}-darting.csv')
-    darting_data = concat_all_csv_list(darting_csvs, 0)
-    darting_data.to_csv(darting_outfile)
+    compile_dfs, compile_names = \
+        compiled_out(concat_all_csv_list, 0, 'darting', prefix, inpath, outpath, compile_dfs, compile_names)
+    # darting_csvs = scaredy_find_csvs(inpath, f'{prefix}-darting')
+    # darting_outfile = os.path.join(outpath, f'All-{prefix}-darting.csv')
+    # darting_data = concat_all_csv_list(darting_csvs, 0)
+    # darting_data.to_csv(darting_outfile)
+
+    return compile_dfs, compile_names
 
 
 def concat_all_freezing(csvlist, tbin):
@@ -106,14 +144,19 @@ def concat_all_freezing(csvlist, tbin):
     return freezing
 
 
-def all_freezing_out(prefix, inpath, outpath):
+def all_freezing_out(prefix, inpath, outpath, compile_dfs, compile_names):
     """
     Combine the data from all freezing csvs and write to file
     """
-    freezing_csvs = scaredy_find_csvs(inpath, f'{prefix}-freezing')
-    freezing_outfile = os.path.join(outpath, f'All-{prefix}-Percent_freezing.csv')
-    freezing_data = concat_all_freezing(freezing_csvs, 0)
-    freezing_data.to_csv(freezing_outfile)
+    compile_dfs, compile_names = \
+        compiled_out(concat_all_csv_list, 0, 'freezing', prefix, inpath, outpath, compile_dfs, compile_names,
+                     file_spec='percent')
+    # freezing_csvs = scaredy_find_csvs(inpath, f'{prefix}-freezing')
+    # freezing_outfile = os.path.join(outpath, f'All-{prefix}-Percent_freezing.csv')
+    # freezing_data = concat_all_freezing(freezing_csvs, 0)
+    # freezing_data.to_csv(freezing_outfile)
+
+    return compile_dfs, compile_names
 
 
 def concat_all_max(csvlist):
@@ -156,7 +199,7 @@ def concat_vel_data(means, sems, meds, maxes):
     return all_data
 
 
-def all_velocity_out(prefix, inpath, outpath, full_analysis, epoch_level=False):
+def all_velocity_out(prefix, inpath, outpath, full_analysis, compile_dfs, compile_names, epoch_level=False):
     """
     Combine data from all csvs related to general velocity measurements and write to output file.
     If epoch_level, also write more detailed max data csv.
@@ -185,8 +228,15 @@ def all_velocity_out(prefix, inpath, outpath, full_analysis, epoch_level=False):
         outfile = os.path.join(outpath, f'All-{prefix}-MaxVel.csv')
         e_maxes_single.to_csv(outfile)
 
+        # add maxes to compile
+        # update and return lists
+        compile_dfs.append(e_maxes_single)
+        compile_names.append('maxvels')
 
-def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, full_analysis):
+    return compile_dfs, compile_names
+
+
+def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, full_analysis, compile_dfs, compile_names):
     """
     Combine and output velocity, freezing, and darting data for each sub(derived)-epoch in the given list.
     """
@@ -198,34 +248,73 @@ def all_subepoch_out(d_epoch_list, prefix, inpath, outpath, full_analysis):
         d_epoch_prefix = f'{prefix}-{d_epoch}'
 
         # velocity summary data
-        all_velocity_out(d_epoch_prefix, inpath, outpath, full_analysis, True)
+        compile_dfs, compile_names = \
+            all_velocity_out(d_epoch_prefix, inpath, outpath, full_analysis, compile_dfs, compile_names,
+                             epoch_level=True)
 
         # darting summary data
-        all_darting_out(d_epoch_prefix, inpath, outpath)
+        compile_dfs, compile_names = \
+            all_darting_out(d_epoch_prefix, inpath, outpath, compile_dfs, compile_names)
 
         # freezing summary data
-        all_freezing_out(d_epoch_prefix, inpath, outpath)
+        compile_dfs, compile_names = \
+            all_freezing_out(d_epoch_prefix, inpath, outpath, compile_dfs, compile_names)
+
+    return compile_dfs, compile_names
 
 
-def compile_SR(epoch_prefix, d_epoch_list, inpath, outpath, full_analysis):
+def compile_SR(epoch_prefix, d_epoch_list, inpath, outpath, full_analysis, compile_dfs, compile_names):
     """
     Compile data from individual animals into summary csvs.
     """
 
     # combine the data from all darting csvs and write to file
-    all_darting_out(epoch_prefix, inpath, outpath)
+    compile_dfs, compile_names = \
+        all_darting_out(epoch_prefix, inpath, outpath, compile_dfs, compile_names)
 
     # combine the data from all freezing csvs and write to file
-    all_freezing_out(epoch_prefix, inpath, outpath)
+    compile_dfs, compile_names = \
+        all_freezing_out(epoch_prefix, inpath, outpath, compile_dfs, compile_names)
 
     # combine data from all csvs related to general velocity measurements and write to output file
-    all_velocity_out(epoch_prefix, inpath, outpath, full_analysis)
+    compile_dfs, compile_names = \
+        all_velocity_out(epoch_prefix, inpath, outpath, full_analysis, compile_dfs, compile_names)
 
     # combine data from all csvs related to epoch-specific velocity measurements and write to output file
-    all_velocity_out(epoch_prefix, inpath, outpath, full_analysis, True)
+    compile_dfs, compile_names = \
+        all_velocity_out(epoch_prefix, inpath, outpath, full_analysis, compile_dfs, compile_names,
+                         epoch_level=True)
 
     # summaries for each sub_epoch
-    all_subepoch_out(d_epoch_list, epoch_prefix, inpath, outpath, full_analysis)
+    compile_dfs, compile_names = \
+        all_subepoch_out(d_epoch_list, epoch_prefix, inpath, outpath, full_analysis, compile_dfs, compile_names)
+
+    return compile_dfs, compile_names
+
+
+def make_super_compile(compile_dfs, compile_names):
+    """
+    Create Multiindex for each compile_df using corresponding compile_name
+    Combine compile_dfs to make super_compile_df
+    Return super_compile_df
+    """
+    # add all multi-indices
+    for compile_df, compile_name in zip(compile_dfs, compile_names):
+        # multiindex, with name and original cols
+        new_cols = pd.MultiIndex.from_product([[compile_name], compile_df.columns])
+        # update cols
+        compile_df.columns = new_cols
+    # combine all to make super compile, on row index
+    super_compile_df = pd.concat(compile_dfs, axis=1)
+
+    return super_compile_df
+
+
+def super_compile_file(super_compil):  # TODO: update to take in df and outpath
+    """
+    Walk dir_path and combine all csv files into a single compiled file w/ multiindex (based on file names).
+    Assumes common row index.
+    """
 
 
 def compiled_output(in_out_settings=srs.InOutSettings(), sheet_settings=srs.SheetSettings(),
@@ -236,24 +325,44 @@ def compiled_output(in_out_settings=srs.InOutSettings(), sheet_settings=srs.Shee
     # iterate over trial_type_list (from SheetSettings object)
     for trial_type in sheet_settings.trial_type_list:
         trial_type_abbr = trial_type.trial_type_abbr
+        # init empty compile df and compile names lists
+        compile_dfs = []
+        compile_names = []
+
         # compile baseline (getting csvs from ind outpath, ouputting to comb outpath); takes trial_type_abbr
-        compile_baseline_sr(trial_type_abbr, in_out_settings.ind_outpath, in_out_settings.com_outpath)
+        compile_dfs, compile_names = \
+            compile_baseline_sr(trial_type_abbr, in_out_settings.ind_outpath, in_out_settings.com_outpath,
+                                compile_dfs, compile_names)
 
         # compile for each epoch and each subepoch -> need to modify compileSR to toggle full_analysis T/F
         # ran twice in original, once with and once without valid d_epoch_list, but logically that would just cause some files to be written twice (not noticeable in output bc overwrites)
         # get epochs for current trial
         epochs = epoch_settings[trial_type.detection_settings_label]
-        print('epochs', epochs)
         if len(epochs) > 1:
             for epoch in epochs:
                 if epoch.epoch_count == 0:
                     continue
                 prefix = f'{trial_type_abbr}-{epoch}'
                 sub_epoch_labels, _ = epoch.get_sub_epoch_lists()
-                compile_SR(prefix, sub_epoch_labels, in_out_settings.ind_outpath, in_out_settings.com_outpath,
-                           in_out_settings.full_vel)
+                compile_dfs, compile_names = \
+                    compile_SR(prefix, sub_epoch_labels, in_out_settings.ind_outpath, in_out_settings.com_outpath,
+                               in_out_settings.full_vel, compile_dfs, compile_names)
         else:
             if epochs[0].epoch_count != 0:
                 sub_epoch_labels, _ = epochs[0].get_sub_epoch_lists()
-                compile_SR(trial_type_abbr, sub_epoch_labels, in_out_settings.ind_outpath, in_out_settings.com_outpath,
-                           in_out_settings.full_vel)
+                compile_dfs, compile_names = \
+                    compile_SR(trial_type_abbr, sub_epoch_labels, in_out_settings.ind_outpath,
+                               in_out_settings.com_outpath, in_out_settings.full_vel, compile_dfs, compile_names)
+
+        # make super compile file for trial type
+        outfile = os.path.join(in_out_settings.com_outpath, f'{trial_type_abbr}-super-compile-file.csv')
+        super_compile_df = make_super_compile(compile_dfs, compile_names)
+        super_compile_df.to_csv(outfile)
+
+
+# TODO: add super compile file (use column multiindex of og col name and extracted file name value)
+# have each compile fn return its compiled df to avoid having to read csv files
+# set multi-index w/ measurement name: pd.MultiIndex.from_product([['meas_name'], df.columns])
+# pd.concat([df1,df2,...], axis=1)
+# do base line first, then add for each epoch using compile_SR (which combines all the dfs it outputs to csvs and returns that combined df)
+# actually, probably easier to just walk dir and combine all files in it at the end (less tightly coupled) -> but won't be trial type specific
