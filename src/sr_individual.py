@@ -73,16 +73,6 @@ def baseline_data_out(anim_id, anim, outpath, bin_secs, baseline_duration, freez
     baseline_darting.to_csv(baseline_darting_outfile)
 
 
-# TODO: add analysis fns here
-# for each epoch (check if full velocity or not to decide which analyses to run),
-# write current to csv and add results to something that stores the overall results
-# do the same for derived epochs
-# how to avoid repetitive code? decorator issue: needing the outpath arg
-# outpath: same except for end, except for that one specific maxvels file that is response
-# can add directly to data frame rather than making list and then converting to dataframe
-# (i.e. will only have one loop for epoch and one in it for derived and write combined df to csv at end)
-
-
 def standard_analysis(delim_df_dict, label, ntones, freezing_threshold, darting_threshold, bin_secs):
     """
     Run standard analysis functions (max vels, freezing, darting).

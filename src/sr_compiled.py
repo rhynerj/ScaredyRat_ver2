@@ -351,11 +351,3 @@ def compiled_output(in_out_settings=srs.InOutSettings(), sheet_settings=srs.Shee
         outfile = os.path.join(in_out_settings.com_outpath, f'{trial_type_abbr}-super-compile-file.csv')
         super_compile_df = make_super_compile(compile_dfs, compile_names)
         super_compile_df.to_csv(outfile)
-
-
-# TODO: add super compile file (use column multiindex of og col name and extracted file name value)
-# have each compile fn return its compiled df to avoid having to read csv files
-# set multi-index w/ measurement name: pd.MultiIndex.from_product([['meas_name'], df.columns])
-# pd.concat([df1,df2,...], axis=1)
-# do base line first, then add for each epoch using compile_SR (which combines all the dfs it outputs to csvs and returns that combined df)
-# actually, probably easier to just walk dir and combine all files in it at the end (less tightly coupled) -> but won't be trial type specific

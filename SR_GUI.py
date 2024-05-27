@@ -623,18 +623,3 @@ def main():
 # below will be replaced with main()
 if __name__ == '__main__':
     main()
-
-
-# TODO: GENERAL
-# 1. reformat GUI stuff -> main function with setup stuff; all more complicated stuff factored out into helper fns
-# !!!(make sure to integrate new settings objects) (done)
-# 1.1. test (done)
-# 2. reorganize functions into files; add any missing documentation (done)
-# 2.1. test
-# 3. remove unused functions (done-ish)
-# 3.1. test
-# 4. remove commented out code (done-ish)
-# 4.1. test
-
-
-# TODO: IP: testing: run standard and full analysis, then same for compile only
