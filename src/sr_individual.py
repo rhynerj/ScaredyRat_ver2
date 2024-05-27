@@ -41,7 +41,7 @@ def get_trial_info(ctx, sheet_settings, epoch_settings):
         return epochs, trial_type_key, trial_type_full, trial_type_abbr
     # handle case where no TrialType matches context
     except KeyError:
-        print(f'Trial Control Setting for {ctx} not found!')
+        print(f'\nTrial Control Setting for {ctx} not found!')
         print('Trial Control Settings known:')
         print(sheet_settings.trial_type_list)
         return False
@@ -158,8 +158,6 @@ def convert_times_lists_to_dfs(standard_analysis_results):
     standard_analysis_results[0:2] = (pd.DataFrame(times, columns=['behavior start', 'behavior end'])
                                       for times in standard_analysis_results[0:2])
 
-    print('pre-collapse', add_tone_timebin_labels(standard_analysis_results[0],
-                                                  standard_analysis_results[3]))
     # add freezing labels and collapse
     standard_analysis_results[0] = collapse_time_bins(add_tone_timebin_labels(standard_analysis_results[0],
                                                                               standard_analysis_results[3]))

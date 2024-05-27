@@ -304,17 +304,10 @@ def make_super_compile(compile_dfs, compile_names):
         new_cols = pd.MultiIndex.from_product([[compile_name], compile_df.columns])
         # update cols
         compile_df.columns = new_cols
-    # combine all to make super compile, on row index
-    super_compile_df = pd.concat(compile_dfs, axis=1)
+    # combine all to make super compile, on row index; Transpose
+    super_compile_df = pd.concat(compile_dfs, axis=1).T
 
     return super_compile_df
-
-
-def super_compile_file(super_compil):  # TODO: update to take in df and outpath
-    """
-    Walk dir_path and combine all csv files into a single compiled file w/ multiindex (based on file names).
-    Assumes common row index.
-    """
 
 
 def compiled_output(in_out_settings=srs.InOutSettings(), sheet_settings=srs.SheetSettings(),
