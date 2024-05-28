@@ -103,7 +103,7 @@ def add_tone_timebin_labels(times_df, counts_df):
     labels = []
     # for each counts_df index value, add it to labels list n times, where n is the val in the first column for that row
     for idx in counts_df.index:
-        labels += ([idx] * int(counts_df.loc[idx][0]))
+        labels += ([idx] * int(counts_df.loc[idx].iloc[0]))
     # add labels to times_df
     times_df['label'] = labels
     # return updated times_df
@@ -167,20 +167,25 @@ def extended_analysis(delim_df_dict, label, epoch_count):
     return [mean_vels, med_vels, sem_vels]
 
 
-def add_analyses_outputs(anim_id, base_outpath, suffixes, comb_dfs_list, analysis_dfs):
+def add_analyses_outputs(anim_id, base_outpath, suffixes, comb_df_list_of_lists, analysis_dfs):
     """
     Write given analysis df to outpath and add it to the given list of list of dataframes
     that stores the combined data for all epochs/sub-epochs (later to be merged into single df)
     for each analysis provided.
+    Return updated list of lists.
     """
     # loop over all included analyses, outputting csvs and adding to appropriate list of df
-    for suffix, comb_df, analysis_df in zip(suffixes, comb_dfs_list, analysis_dfs):
+    for suffix, comb_df_list, analysis_df in zip(suffixes, comb_df_list_of_lists, analysis_dfs):
+        # if data frame is empty, skip
+        if analysis_df.empty:
+            print(f'No data for {anim_id} {suffix}')
+            continue
         outpath = f'{base_outpath}-{suffix}-{anim_id}.csv'
         # print(outpath, '\n')
         analysis_df.to_csv(outpath)
-        comb_df.append(analysis_df)
+        comb_df_list.append(analysis_df)
 
-    return comb_dfs_list
+    return comb_df_list_of_lists
 
 
 def run_analysis(anim, anim_id, outpath, prefix, epoch_label, epoch_count,
@@ -316,13 +321,14 @@ def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr,
                                                  suffixes, full_analysis)
 
     # combined dfs
+    # exclude empty lists (no data for any data frame)
     # for each item in comb_dfs_list, do something list pd.concat(comb_df, axis=1) -> comb_df should be list of dfs
     # for full analysis, last 3 dfs combined along matching row idx (all others combined along matching columns)
     if full_analysis:
-        combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list[:-3]]
-        combined_dfs += [pd.concat(comb_dfs, axis=1) for comb_dfs in comb_dfs_list[5:]]
+        combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list[:-3] if comb_dfs]
+        combined_dfs += [pd.concat(comb_dfs, axis=1) for comb_dfs in comb_dfs_list[5:] if comb_dfs]
     else:
-        combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list]
+        combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list if comb_dfs]
 
     base_outpath = os.path.join(outpath, trial_type_abbr)
     # output each combined df
