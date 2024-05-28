@@ -117,7 +117,7 @@ def run_sheet_window(sheet_window, sheet_settings, epoch_settings):
     # event loop to process "events" and get the "values" of the inputs
     while True:
         sheet_event, sheet_values = sheet_window.read()
-        print("sheet event:", sheet_event, "sheet values:", sheet_values, sep="\n")
+        print("\nsheet event:", sheet_event, "sheet values:", sheet_values, sep="\n")
 
         if sheet_event == sg.WIN_CLOSED or sheet_event == 'Cancel':  # if user closes window or clicks cancel
             sheet_window.close()
@@ -360,7 +360,7 @@ def run_epoch_window(epoch_window, detection_labels, epoch_settings):
     # event loop to process "events" and get the "values" of the inputs
     while True:
         epoch_event, epoch_values = epoch_window.read()
-        print('epoch event', epoch_event, 'epoch values', epoch_values)
+        print('\nepoch event', epoch_event, 'epoch values', epoch_values)
 
         if epoch_event == sg.WIN_CLOSED or epoch_event == 'Cancel':  # if user closes window or clicks cancel
             break
@@ -421,10 +421,10 @@ def print_settings(in_out_settings, sheet_settings, trial_settings, epoch_settin
     """
     Print given settings.
     """
-    print('input/output settings', in_out_settings)
-    print('sheet settings', sheet_settings)
-    print('trial settings', trial_settings)
-    print('epoch settings', epoch_settings)
+    print('\n\ninput/output settings:', in_out_settings)
+    print('sheet settings:', sheet_settings)
+    print('trial settings:', trial_settings)
+    print('epoch settings:', epoch_settings)
 
 
 def run_SR(in_out_settings=srs.InOutSettings(), sheet_settings=srs.SheetSettings(), trial_settings=srs.TrialSettings(),
@@ -477,7 +477,7 @@ def run_SR(in_out_settings=srs.InOutSettings(), sheet_settings=srs.SheetSettings
             if (anim_id == "-1" or anim_id == "nan"
                     or (isinstance(anim_id, float) and math.isnan(float(anim_id)))
                     or (isinstance(anim_id, int) and anim_id == -1)):
-                print('Animal Detection Failure: failed to load sheet or animal ID not found',
+                print('\nAnimal Detection Failure: failed to load sheet or animal ID not found',
                       anim_id, '\n', ctx, sep='\n')
                 continue
             else:
@@ -571,7 +571,8 @@ def run_main_window(main_window, in_out_settings, sheet_settings, trial_settings
 
         elif main_event == 'Run':
             # print current settings
-            print(sheet_settings, trial_settings, epoch_settings, sep='\n\n')
+            # print('', sheet_settings, trial_settings, epoch_settings, sep='\n\n')
+            print_settings(in_out_settings, sheet_settings, trial_settings, epoch_settings)
 
             # run ScaredyRat with current settings -> note: run_SR will be moving back to SR_GUI.py
             run_SR(in_out_settings, sheet_settings, trial_settings, epoch_settings)
@@ -622,18 +623,3 @@ def main():
 # below will be replaced with main()
 if __name__ == '__main__':
     main()
-
-
-# TODO: GENERAL
-# 1. reformat GUI stuff -> main function with setup stuff; all more complicated stuff factored out into helper fns
-# !!!(make sure to integrate new settings objects) (done)
-# 1.1. test (done)
-# 2. reorganize functions into files; add any missing documentation (done)
-# 2.1. test
-# 3. remove unused functions (done-ish)
-# 3.1. test
-# 4. remove commented out code (done-ish)
-# 4.1. test
-
-
-# TODO: IP: testing: run standard and full analysis, then same for compile only

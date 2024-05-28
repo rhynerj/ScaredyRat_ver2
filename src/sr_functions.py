@@ -35,8 +35,9 @@ def animal_read(inpath, filename, sheet):
     df.columns.names = ['']
     df = df.loc[0:, :]
     df.index.names = ['Trial time']
-    df.fillna(0,
-              inplace=True)  # note: in previous version, this was done by replacing '-' chars (which were not read in as na_values), data type of some cols changed
+    # (type-casting to float to avoid futurewarning w/ fillna; make sure no issue w/ ints vs floats)
+    df.astype(float).fillna(0,
+                            inplace=True)  # note: in previous version, this was done by replacing '-' chars (which were not read in as na_values), data type of some cols changed
 
     return animal, context, df
 
@@ -375,7 +376,7 @@ def plot_outputs(anim, anim_id, trial_type_full, outpath, prefix, ntones, fts, d
     # plot stuff
     vels = pd.DataFrame(anim['Velocity'])
     # print('Trying to plot, 1')
-    plt.style.use('seaborn-white')
+    plt.style.use('seaborn-v0_8-white')
     plt.figure(figsize=(16, 8), facecolor='white', edgecolor='white')
     plt.axhline(linewidth=2, color='black')
     plt.axvline(linewidth=2, color='black')
