@@ -167,30 +167,33 @@ def extended_analysis(delim_df_dict, label, epoch_count):
     return [mean_vels, med_vels, sem_vels]
 
 
-def add_analyses_outputs(anim_id, base_outpath, suffixes, comb_df_list_of_lists, analysis_dfs):
+def add_analyses_outputs(anim_id, base_outpath, suffixes, comb_df_list_of_lists, no_data_list, analysis_dfs):
     """
     Write given analysis df to outpath and add it to the given list of list of dataframes
     that stores the combined data for all epochs/sub-epochs (later to be merged into single df)
     for each analysis provided.
-    Return updated list of lists.
+    If no data for given analysis, add to no data list.
+    Return updated df list of lists and no data list.
     """
     # loop over all included analyses, outputting csvs and adding to appropriate list of df
     for suffix, comb_df_list, analysis_df in zip(suffixes, comb_df_list_of_lists, analysis_dfs):
         # if data frame is empty, skip
         if analysis_df.empty:
-            print(f'No data for {anim_id} {suffix}')
+            no_data = f'No data for {anim_id} {suffix}'
+            print(no_data)
+            no_data_list.append(no_data)
             continue
         outpath = f'{base_outpath}-{suffix}-{anim_id}.csv'
         # print(outpath, '\n')
         analysis_df.to_csv(outpath)
         comb_df_list.append(analysis_df)
 
-    return comb_df_list_of_lists
+    return comb_df_list_of_lists, no_data_list
 
 
 def run_analysis(anim, anim_id, outpath, prefix, epoch_label, epoch_count,
                  freezing_threshold, darting_threshold, bin_secs,
-                 comb_dfs_list, suffixes, full_analysis,
+                 comb_dfs_list, no_data_list, suffixes, full_analysis,
                  trial_type_full=None, sub_epoch_timings=None, sub_epoch_labels=None, sub_epoch=None):
     """
     Run analysis (outputs analysis csvs) and return updated list of analysis dataframes (for combined dataframe output)
@@ -224,16 +227,17 @@ def run_analysis(anim, anim_id, outpath, prefix, epoch_label, epoch_count,
     analysis_results = convert_times_lists_to_dfs(analysis_results)
 
     base_outpath = os.path.join(outpath, prefix)
-    comb_dfs_list = add_analyses_outputs(anim_id, base_outpath, suffixes, comb_dfs_list,
-                                         analysis_results)  # this will repeat for each sub epoch, except that the suffixes will be different (will include the sub_epoch, and will be shock_response for shock max vel)
-
-    # return the updated combined data frames
-    return comb_dfs_list
+    # analysis will repeat for each sub epoch, except that the suffixes will be different
+    # (will include the sub_epoch, and will be shock_response for shock max vel)
+    comb_dfs_list, no_data_list = add_analyses_outputs(anim_id, base_outpath, suffixes, comb_dfs_list, no_data_list,
+                                                       analysis_results)
+    # return the updated combined data frames and no data
+    return comb_dfs_list, no_data_list
 
 
 def analysis_files_for_epoch(anim, anim_id, outpath, prefix, trial_type_full, epoch,
                              freezing_threshold, darting_threshold, bin_secs,
-                             comb_dfs_list, suffixes, full_analysis):
+                             comb_dfs_list, no_data_list, suffixes, full_analysis):
     """
     For given epoch, output epoch and subepoch analysis files (including plot),
     and return list of analysis dataframes.
@@ -243,11 +247,12 @@ def analysis_files_for_epoch(anim, anim_id, outpath, prefix, trial_type_full, ep
     all_sub_epoch_labels, all_sub_epoch_timings = epoch.get_sub_epoch_lists()
 
     # run analysis, update combined dfs, and output files
-    comb_dfs_list = run_analysis(anim, anim_id, outpath, prefix, epoch.label, epoch.epoch_count,
-                                 freezing_threshold, darting_threshold, bin_secs,
-                                 comb_dfs_list, suffixes, full_analysis,
-                                 trial_type_full=trial_type_full,
-                                 sub_epoch_timings=all_sub_epoch_timings, sub_epoch_labels=all_sub_epoch_labels)
+    comb_dfs_list, no_data_list = run_analysis(anim, anim_id, outpath, prefix, epoch.label, epoch.epoch_count,
+                                               freezing_threshold, darting_threshold, bin_secs,
+                                               comb_dfs_list, no_data_list, suffixes, full_analysis,
+                                               trial_type_full=trial_type_full,
+                                               sub_epoch_timings=all_sub_epoch_timings,
+                                               sub_epoch_labels=all_sub_epoch_labels)
     # loop over sub-epochs
     for sub_epoch, sub_epoch_timings in epoch.get_sub_epochs_with_int_timings().items():
         # skip empties
@@ -261,13 +266,13 @@ def analysis_files_for_epoch(anim, anim_id, outpath, prefix, trial_type_full, ep
             sub_epoch_suffixes[2] = 'Shock-response'
 
         # run analysis, update combined dfs, and output files
-        comb_dfs_list = run_analysis(anim, anim_id, outpath, prefix, epoch.label, epoch.epoch_count,
-                                     freezing_threshold, darting_threshold, bin_secs,
-                                     comb_dfs_list, sub_epoch_suffixes, full_analysis,
-                                     sub_epoch_timings=sub_epoch_timings, sub_epoch=sub_epoch)
+        comb_dfs_list, no_data_list = run_analysis(anim, anim_id, outpath, prefix, epoch.label, epoch.epoch_count,
+                                                   freezing_threshold, darting_threshold, bin_secs,
+                                                   comb_dfs_list, no_data_list, sub_epoch_suffixes, full_analysis,
+                                                   sub_epoch_timings=sub_epoch_timings, sub_epoch=sub_epoch)
 
-    # return updated combined dfs
-    return comb_dfs_list
+    # return updated combined dfs and no data list
+    return comb_dfs_list, no_data_list
 
 
 def comb_outputs(base_outpath, anim_id, suffixes, combined_dfs):
@@ -282,6 +287,19 @@ def comb_outputs(base_outpath, anim_id, suffixes, combined_dfs):
         combined_df.to_csv(outpath)
 
 
+def write_no_data(base_outpath, no_data_list):
+    """
+    Write list analysis conditions for which there was no data for current animal to a text file.
+    """
+    # combine list into a single string
+    no_data_string = '\n'.join(no_data_list) + '\n'
+    # path to output file
+    outpath = f'{base_outpath}-no_data.txt'
+    # open output file and append string to it
+    with open(outpath, 'a') as no_data_file:
+        no_data_file.write(no_data_string)
+
+
 def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr, epochs,
                        freeze_thresh, dart_thresh, bin_secs, full_analysis=False):
     """
@@ -290,7 +308,7 @@ def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr,
     """
 
     # possibilities for future abstraction: take standard and additional suffixes as args, base n_analyses on length
-    # list of suffixes -> note that the one the max-vel in the sub-epoch (specifically) must be "shock-response" -> move one function up? (to all_epochs_analysis)?
+    # list of suffixes -> note that the one the max-vel in the sub-epoch (specifically) must be "shock-response"
     suffixes = ['freezing-times', 'darting-times', 'max-vels', 'freezing', 'darting']
 
     # number of analysis outputs per analysis
@@ -302,6 +320,8 @@ def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr,
         suffixes += ['mean-vels', 'med-vels', 'SEM-vels']
     # initialize empty list of lists for combined dfs
     comb_dfs_list = [[] for _ in range(n_analyses)]
+    # init empty no_data_list
+    no_data_list = []
 
     # check whether multiple epochs -> need to do this to see whether to include epoch name
     if len(epochs) > 1:
@@ -310,15 +330,17 @@ def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr,
             prefix = f'{trial_type_abbr}-{epoch}'
             # print(base_outpath)
             # run the analysis (above) -> might not need to reassign to list (since og is mutatated) but keep for clarity?
-            comb_dfs_list = analysis_files_for_epoch(anim, anim_id, outpath, prefix, trial_type_full,
-                                                     epoch, freeze_thresh, dart_thresh, bin_secs, comb_dfs_list,
-                                                     suffixes, full_analysis)
+            comb_dfs_list, no_data_list = analysis_files_for_epoch(anim, anim_id, outpath, prefix, trial_type_full,
+                                                                   epoch, freeze_thresh, dart_thresh, bin_secs,
+                                                                   comb_dfs_list, no_data_list,
+                                                                   suffixes, full_analysis)
     else:
         # print(outpath)
         # run analysis for single epoch (exclude epoch name from file names)
-        comb_dfs_list = analysis_files_for_epoch(anim, anim_id, outpath, trial_type_abbr, trial_type_full, epochs[0],
-                                                 freeze_thresh, dart_thresh, bin_secs, comb_dfs_list,
-                                                 suffixes, full_analysis)
+        comb_dfs_list, no_data_list = analysis_files_for_epoch(anim, anim_id, outpath, trial_type_abbr, trial_type_full,
+                                                               epochs[0], freeze_thresh, dart_thresh, bin_secs,
+                                                               comb_dfs_list, no_data_list,
+                                                               suffixes, full_analysis)
 
     # combined dfs
     # exclude empty lists (no data for any data frame)
@@ -333,3 +355,5 @@ def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr,
     base_outpath = os.path.join(outpath, trial_type_abbr)
     # output each combined df
     comb_outputs(base_outpath, anim_id, suffixes, combined_dfs)
+    # add list analysis conditions for which there was no data for current animal to no data file
+    write_no_data(base_outpath, no_data_list)
