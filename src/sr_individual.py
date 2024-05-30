@@ -275,16 +275,28 @@ def analysis_files_for_epoch(anim, anim_id, outpath, prefix, trial_type_full, ep
     return comb_dfs_list, no_data_list
 
 
+def concat_df_lists(df_list_of_lists, axis):
+    """
+    Concat all lists of dfs in list of lists along given axis.
+    Return list of concatted dfs.
+    """
+    concatted_df_list = []
+    for df_list in df_list_of_lists:
+        # if there are items in the df_list, concat them and add them to output list, else add None (skip marker)
+        item = pd.concat(df_list, axis=axis) if df_list else None
+        concatted_df_list.append(item)
+    return concatted_df_list
+
+
 def comb_outputs(base_outpath, anim_id, suffixes, combined_dfs):
     """
     Write given combined analysis df to outpath with associated suffix.
     """
     # loop over all included analyses, outputting csvs
     for suffix, combined_df in zip(suffixes, combined_dfs):
-        outpath = f'{base_outpath}-all-{suffix}-{anim_id}.csv'
-        # print(outpath)
-        # print(combined_df)
-        combined_df.to_csv(outpath)
+        if combined_df is not None:
+            outpath = f'{base_outpath}-all-{suffix}-{anim_id}.csv'
+            combined_df.to_csv(outpath)
 
 
 def write_no_data(base_outpath, no_data_list):
@@ -347,10 +359,13 @@ def all_epoch_analysis(anim, anim_id, outpath, trial_type_full, trial_type_abbr,
     # for each item in comb_dfs_list, do something list pd.concat(comb_df, axis=1) -> comb_df should be list of dfs
     # for full analysis, last 3 dfs combined along matching row idx (all others combined along matching columns)
     if full_analysis:
-        combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list[:-3] if comb_dfs]
-        combined_dfs += [pd.concat(comb_dfs, axis=1) for comb_dfs in comb_dfs_list[5:] if comb_dfs]
+        # combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list[:-3] if comb_dfs]
+        # combined_dfs += [pd.concat(comb_dfs, axis=1) for comb_dfs in comb_dfs_list[5:] if comb_dfs]
+        combined_dfs = concat_df_lists(comb_dfs_list[:-3], 0)
+        combined_dfs += concat_df_lists(comb_dfs_list[5:], 1)
     else:
-        combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list if comb_dfs]
+        # combined_dfs = [pd.concat(comb_dfs, axis=0) for comb_dfs in comb_dfs_list if comb_dfs]
+        combined_dfs = concat_df_lists(comb_dfs_list, 0)
 
     base_outpath = os.path.join(outpath, trial_type_abbr)
     # output each combined df
