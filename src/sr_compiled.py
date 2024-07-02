@@ -149,7 +149,7 @@ def all_freezing_out(prefix, inpath, outpath, compile_dfs, compile_names):
     Combine the data from all freezing csvs and write to file
     """
     compile_dfs, compile_names = \
-        compiled_out(concat_all_csv_list, 0, 'freezing', prefix, inpath, outpath, compile_dfs, compile_names,
+        compiled_out(concat_all_csv_list, 2, 'freezing', prefix, inpath, outpath, compile_dfs, compile_names,
                      file_spec='percent')
     # freezing_csvs = scaredy_find_csvs(inpath, f'{prefix}-freezing')
     # freezing_outfile = os.path.join(outpath, f'All-{prefix}-Percent_freezing.csv')
