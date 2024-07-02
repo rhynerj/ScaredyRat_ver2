@@ -9,7 +9,6 @@ PyInstaller.__main__.run([
     '--hidden-import=%s' %'tkinter,scipy,numpy,pandas,openpyxl,matplotlib,seaborn,PySimpleGUI',
     '--additional-hooks-dir=%s' %'.',
     '--clean',
-    '--upx-dir=%s\,%''./UPX/upx-3.96-win64',
     '--paths=%s' %'./src',
     './SR_GUI.py',
     './src/sr_compiled.py',
