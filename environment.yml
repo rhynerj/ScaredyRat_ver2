@@ -1,0 +1,10 @@
+name: sr2
+channels:
+  - defaults
+dependencies:
+  - python
+  - numpy
+  - openpyxl
+  - pip
+  - matplotlib
+  - pandas

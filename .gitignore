@@ -15,4 +15,4 @@ UPX
 tests
 .idea
 *test*.py
-!requirements.txt
+!*requirements.txt

@@ -3,7 +3,9 @@ Functions to launch and run GUI for Scaredy Rat.
 """
 # imports
 import math
-import PySimpleGUI as sg
+# import PySimpleGUI as sg
+import FreeSimpleGUI as sg
+
 
 import src.sr_functions as srf
 import src.sr_individual as sri
