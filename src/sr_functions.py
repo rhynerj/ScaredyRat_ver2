@@ -20,14 +20,16 @@ def animal_read(inpath, filename, sheet):
     """
     filepath = os.path.join(inpath, filename)
     try:
-        df = pd.read_excel(filepath, sheet_name=sheet, index_col=0, na_values='-')
+        # read df from excel file with the first column as the row idx and no col idx
+        df = pd.read_excel(filepath, sheet_name=sheet, index_col=0, header=None, na_values='-')
     except (FileNotFoundError, ValueError) as err:
         print(err)
         return -1, -1, -1
 
-    animal = df.loc['Animal ID', '40'].strip()
-
-    context = df.loc['Trial Control settings', '40'].strip()
+    # animal and context are included as key/value pairs in header lines
+    # where the key is the row name, and the value is in the second col
+    animal = df.loc['Animal ID', 1].strip()
+    context = df.loc['Trial Control settings', 1].strip()
 
     print(f"\n{filename} {sheet} is {animal} in {context}")
 

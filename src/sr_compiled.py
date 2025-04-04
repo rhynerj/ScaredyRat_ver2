@@ -16,13 +16,14 @@ def get_anim(csv):
     """
     Extract animal ID from file name.
     """
-    exp_rgx = re.compile(r'.*-([a-zA-Z]+-?\d+)\.[a-zA-Z]+$')
+    exp_rgx = re.compile(r'.*-([a-zA-Z\d]+-?[a-zA-Z\d]+)\.[a-zA-Z]+$')
     match = exp_rgx.match(csv)
 
     if match:
         anim = match.group(1)
         return anim
     else:
+        print(csv)
         raise ValueError('File name does not contain valid animal ID.')
 
 
